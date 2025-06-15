@@ -37,7 +37,11 @@
    - **Service account ID**: `tts-service-account`
    - **Description**: `Text-to-Speech service for Chinese Learning App`
 4. Click **"CREATE AND CONTINUE"**
-5. **Grant access**: Chọn role **"Cloud Text-to-Speech User"**
+5. **Grant access**: Chọn một trong các role sau:
+   - **"Cloud Text-to-Speech Client"** (khuyến nghị)
+   - **"Text-to-Speech Service Agent"** 
+   - **"AI Platform Developer"**
+   - Hoặc **"Editor"** (Basic role - đơn giản nhất)
 6. Click **"CONTINUE"** → **"DONE"**
 
 ### 1.6 Download Service Account Key

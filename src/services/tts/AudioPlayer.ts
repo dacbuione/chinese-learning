@@ -1,5 +1,6 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
+import { expoTTSService } from './ExpoTTSService';
 
 /**
  * 🎵 Audio Player Service
@@ -46,10 +47,8 @@ class AudioPlayerService {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         staysActiveInBackground: false,
-        interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
-        interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
         playThroughEarpieceAndroid: false,
       });
 
@@ -81,7 +80,6 @@ class AudioPlayerService {
           shouldPlay: true,
           volume: options.volume || 1.0,
           rate: options.rate || 1.0,
-          shouldLoop: options.shouldLoop || false,
           progressUpdateIntervalMillis: options.progressUpdateInterval || 100,
         }
       );
@@ -129,7 +127,6 @@ class AudioPlayerService {
           shouldPlay: true,
           volume: options.volume || 1.0,
           rate: options.rate || 1.0,
-          shouldLoop: options.shouldLoop || false,
           progressUpdateIntervalMillis: options.progressUpdateInterval || 100,
         }
       );
@@ -394,6 +391,139 @@ class AudioPlayerService {
       activeAudioCount: this.audioInstances.size,
       totalCacheSize: this.audioStates.size,
     };
+  }
+
+  /**
+   * 🎯 Play text using TTS
+   */
+  async playText(
+    audioId: string,
+    text: string,
+    options: PlaybackOptions & { language?: string; speed?: number } = {}
+  ): Promise<void> {
+    try {
+      console.log(`🎵 AudioPlayer.playText called for: "${text.substring(0, 20)}..."`);
+      
+      // Set initial state
+      const initialState: AudioState = {
+        isLoaded: true,
+        isPlaying: true,
+        isPaused: false,
+        duration: 0,
+        position: 0,
+        volume: options.volume || 1.0,
+      };
+      
+      this.audioStates.set(audioId, initialState);
+      this.notifyProgressCallback(audioId, initialState);
+
+      // Use speak method to actually play audio
+      await expoTTSService.speak(text, {
+        language: options.language || 'zh-CN',
+        speed: options.speed || 1.0,
+        volume: options.volume || 1.0,
+      });
+
+      // Update state to completed
+      const completedState: AudioState = {
+        isLoaded: true,
+        isPlaying: false,
+        isPaused: false,
+        duration: 0,
+        position: 0,
+        volume: options.volume || 1.0,
+      };
+      
+      this.audioStates.set(audioId, completedState);
+      this.notifyProgressCallback(audioId, completedState);
+
+      console.log(`✅ AudioPlayer.playText completed for: ${audioId}`);
+    } catch (error) {
+      console.error(`❌ AudioPlayer.playText failed for ${audioId}:`, error);
+      
+      // Set error state
+      const errorState: AudioState = {
+        isLoaded: false,
+        isPlaying: false,
+        isPaused: false,
+        duration: 0,
+        position: 0,
+        volume: options.volume || 1.0,
+      };
+      
+      this.audioStates.set(audioId, errorState);
+      this.notifyProgressCallback(audioId, errorState);
+      
+      throw error;
+    }
+  }
+
+  /**
+   * 🇨🇳 Play Chinese text with tone support
+   */
+  async playChineseText(
+    audioId: string,
+    text: string,
+    pinyin?: string,
+    tone?: number,
+    options: PlaybackOptions = {}
+  ): Promise<void> {
+    try {
+      console.log(`🇨🇳 Playing Chinese TTS: ${text}`);
+      
+      // Set initial state
+      const initialState: AudioState = {
+        isLoaded: true,
+        isPlaying: true,
+        isPaused: false,
+        duration: 0,
+        position: 0,
+        volume: options.volume || 1.0,
+      };
+      
+      this.audioStates.set(audioId, initialState);
+      this.notifyProgressCallback(audioId, initialState);
+      
+      // Use speakChinese method to actually play audio with tone support
+      await expoTTSService.speakChinese(
+        text,
+        pinyin,
+        tone,
+        options.rate || 1.0
+      );
+
+      // Update state to completed
+      const completedState: AudioState = {
+        isLoaded: true,
+        isPlaying: false,
+        isPaused: false,
+        duration: 0,
+        position: 0,
+        volume: options.volume || 1.0,
+      };
+      
+      this.audioStates.set(audioId, completedState);
+      this.notifyProgressCallback(audioId, completedState);
+
+      console.log(`✅ Chinese TTS completed for: ${audioId}`);
+    } catch (error) {
+      console.error(`❌ Failed to play Chinese TTS ${audioId}:`, error);
+      
+      // Set error state
+      const errorState: AudioState = {
+        isLoaded: false,
+        isPlaying: false,
+        isPaused: false,
+        duration: 0,
+        position: 0,
+        volume: options.volume || 1.0,
+      };
+      
+      this.audioStates.set(audioId, errorState);
+      this.notifyProgressCallback(audioId, errorState);
+      
+      throw error;
+    }
   }
 }
 

@@ -364,9 +364,6 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
             showLabel={true}
             label={`${currentStep}/${lesson.totalSteps}`}
             showPercentage={false}
-            theme="chinese"
-            size="md"
-            animation="spring"
           />
         </View>
 
@@ -418,10 +415,10 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
                 <Animated.View style={[styles.resultContainer, animatedResultStyle]}>
                   <Card
                     variant="elevated"
-                    style={[
+                    style={StyleSheet.flatten([
                       styles.resultCard,
                       isCorrect ? styles.resultCardCorrect : styles.resultCardIncorrect,
-                    ]}
+                    ])}
                   >
                     <View style={styles.resultHeader}>
                       {isCorrect ? (

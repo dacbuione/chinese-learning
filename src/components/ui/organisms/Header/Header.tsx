@@ -589,10 +589,9 @@ export const Header = forwardRef<HeaderRef, HeaderProps>(({
         <SearchBar
           placeholder={search.placeholder || 'Tìm kiếm...'}
           value={state.searchQuery}
-          onChangeText={handleSearchChange}
+          onSearch={handleSearchChange}
           onFocus={handleSearchFocus}
           onBlur={handleSearchBlur}
-          autoFocus={search.autoFocus}
           // suggestions={search.suggestions}
         />
       </Animated.View>

@@ -11,13 +11,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  PanGestureHandler,
-  State,
   Dimensions,
 } from 'react-native';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, G, Circle, Line } from 'react-native-svg';
+import Svg, { Path, G, Circle, Line, Text as SvgText } from 'react-native-svg';
 
 // Theme and utils
 import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '../../theme';
@@ -227,7 +226,7 @@ export const StrokeOrder: React.FC<StrokeOrderProps> = ({
                   strokeDashoffset={animatedValue.interpolate({
                     inputRange: [0, 1],
                     outputRange: [100, 0],
-                  })}
+                  }) as any}
                 />
               </Animated.View>
             )}
@@ -243,7 +242,7 @@ export const StrokeOrder: React.FC<StrokeOrderProps> = ({
               />
             )}
             {showHints && (
-              <Text
+              <SvgText
                 x={stroke.startPoint.x}
                 y={stroke.startPoint.y + 4}
                 textAnchor="middle"
@@ -252,7 +251,7 @@ export const StrokeOrder: React.FC<StrokeOrderProps> = ({
                 fontWeight="bold"
               >
                 {stroke.order}
-              </Text>
+              </SvgText>
             )}
           </G>
         ))}

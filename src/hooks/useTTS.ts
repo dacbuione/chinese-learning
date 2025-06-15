@@ -1,18 +1,19 @@
 import { useState, useCallback, useEffect } from 'react';
-import { googleTTSService, TTSOptions, TTSResponse, ChineseVoiceOptions } from '../services/tts/GoogleTTSService';
+import { expoTTSService, TTSOptions } from '../services/tts/ExpoTTSService';
 import { audioPlayerService, AudioState } from '../services/tts/AudioPlayer';
 
 /**
  * 🎵 useTTS Hook
  * 
- * React hook để sử dụng Text-to-Speech service
+ * React hook để sử dụng Text-to-Speech service với Expo Speech
  * 
  * Tính năng:
- * - Synthesize text thành audio
+ * - Synthesize text thành audio với Expo Speech
  * - Play/pause/stop audio
  * - Track audio state
  * - Handle loading states
  * - Error handling
+ * - Chinese language support
  */
 
 export interface TTSState {
@@ -21,7 +22,15 @@ export interface TTSState {
   isPaused: boolean;
   error: string | null;
   audioState: AudioState | null;
-  source: 'google-tts' | 'web-speech' | 'cache' | null;
+  source: 'expo-speech' | 'cache' | null;
+}
+
+export interface ChineseVoiceOptions {
+  hanzi: string;
+  pinyin?: string;
+  tone?: number;
+  speed?: number;
+  language?: string;
 }
 
 export interface TTSControls {
@@ -77,37 +86,49 @@ export function useTTS(audioId?: string): [TTSState, TTSControls] {
   }, [currentAudioId, updateAudioState]);
 
   /**
-   * 🎯 Speak text với TTS
+   * 🎯 Speak text với Expo Speech
    */
   const speak = useCallback(async (text: string, options: TTSOptions = { language: 'zh-CN' }) => {
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
+      console.log(`🎤 useTTS.speak called with: "${text}", options:`, options);
+      
+      // Reset state and start loading
+      setState(prev => ({ 
+        ...prev, 
+        isLoading: true, 
+        isPlaying: false,
+        isPaused: false,
+        error: null 
+      }));
 
-      // Synthesize text thành audio
-      const response: TTSResponse = await googleTTSService.synthesize(text, options);
-
-      // Play audio
-      await audioPlayerService.playFromBase64(
+      // Use AudioPlayer's playText method for Expo Speech
+      await audioPlayerService.playText(
         currentAudioId,
-        response.audioContent,
+        text,
         {
-          volume: 1.0,
-          rate: options.speed || 1.0,
+          language: options.language || 'zh-CN',
+          speed: options.speed || 1.0,
+          volume: options.volume || 1.0,
         }
       );
 
+      // Reset to ready state after completion
       setState(prev => ({
         ...prev,
         isLoading: false,
-        source: response.source,
+        isPlaying: false,
+        isPaused: false,
+        source: 'expo-speech',
       }));
 
-      console.log(`🎵 Speaking: "${text}" (source: ${response.source})`);
+      console.log(`✅ Speaking completed: "${text}" (source: expo-speech)`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown TTS error';
       setState(prev => ({
         ...prev,
         isLoading: false,
+        isPlaying: false,
+        isPaused: false,
         error: errorMessage,
       }));
       console.error('❌ TTS Error:', error);
@@ -121,21 +142,22 @@ export function useTTS(audioId?: string): [TTSState, TTSControls] {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      const response: TTSResponse = await googleTTSService.synthesizeChinese(options);
-
-      await audioPlayerService.playFromBase64(
+      // Use AudioPlayer's playChineseText method
+      await audioPlayerService.playChineseText(
         currentAudioId,
-        response.audioContent,
+        options.hanzi,
+        options.pinyin,
+        options.tone,
         {
-          volume: 1.0,
           rate: options.speed || 1.0,
+          volume: 1.0,
         }
       );
 
       setState(prev => ({
         ...prev,
         isLoading: false,
-        source: response.source,
+        source: 'expo-speech',
       }));
 
       console.log(`🇨🇳 Speaking Chinese: ${options.hanzi} (${options.pinyin}) - Tone ${options.tone}`);
@@ -212,7 +234,7 @@ export function useTTS(audioId?: string): [TTSState, TTSControls] {
   }, [currentAudioId]);
 
   /**
-   * 📍 Seek to position
+   * ⏭️ Seek to position
    */
   const seekTo = useCallback(async (position: number) => {
     try {
@@ -223,7 +245,7 @@ export function useTTS(audioId?: string): [TTSState, TTSControls] {
   }, [currentAudioId]);
 
   /**
-   * 🧹 Clear error
+   * 🧹 Clear error state
    */
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }));
@@ -234,8 +256,8 @@ export function useTTS(audioId?: string): [TTSState, TTSControls] {
    */
   const getServiceStatus = useCallback(() => {
     return {
-      tts: googleTTSService.getStatus(),
-      audio: audioPlayerService.getStatus(),
+      audioPlayer: audioPlayerService.getStatus(),
+      ttsService: expoTTSService.getStatus(),
     };
   }, []);
 
@@ -256,92 +278,106 @@ export function useTTS(audioId?: string): [TTSState, TTSControls] {
 }
 
 /**
- * 🎯 Hook cho vocabulary cards
+ * 📚 Specialized hook for vocabulary learning
  */
 export function useVocabularyTTS() {
-  const [state, controls] = useTTS('vocabulary-tts');
+  const [ttsState, ttsControls] = useTTS('vocabulary-tts');
 
-  const speakVocabulary = useCallback(async (
-    hanzi: string,
-    pinyin: string,
-    tone: number,
-    speed: number = 1.0
-  ) => {
-    await controls.speakChinese({
-      hanzi,
-      pinyin,
-      tone,
-      speed,
+  const speakVocabulary = useCallback(async (word: {
+    simplified: string;
+    pinyin: string;
+    tone?: number;
+  }) => {
+    await ttsControls.speakChinese({
+      hanzi: word.simplified,
+      pinyin: word.pinyin,
+      tone: word.tone,
+      speed: 0.8, // Slower for learning
     });
-  }, [controls]);
+  }, [ttsControls]);
 
   return {
-    ...state,
+    ...ttsState,
     speakVocabulary,
-    ...controls,
+    ...ttsControls,
   };
 }
 
 /**
- * 🎯 Hook cho pronunciation practice
+ * 🗣️ Specialized hook for pronunciation practice
  */
 export function usePronunciationTTS() {
-  const [state, controls] = useTTS('pronunciation-tts');
+  const [ttsState, ttsControls] = useTTS('pronunciation-tts');
 
   const speakForPractice = useCallback(async (
-    hanzi: string,
-    pinyin: string,
-    tone: number,
-    speed: number = 0.8 // Slower for practice
-  ) => {
-    await controls.speakChinese({
-      hanzi,
-      pinyin,
-      tone,
-      speed,
-    });
-  }, [controls]);
-
-  const speakExample = useCallback(async (
     text: string,
-    speed: number = 1.0
+    speed: number = 0.6 // Very slow for practice
   ) => {
-    await controls.speak(text, {
+    console.log(`🎯 usePronunciationTTS.speakForPractice called with: "${text}", speed: ${speed}`);
+    await ttsControls.speak(text, {
       language: 'zh-CN',
       speed,
-      voice: 'zh-CN-Wavenet-A',
     });
-  }, [controls]);
+  }, [ttsControls]);
+
+  const repeatPronunciation = useCallback(async (
+    hanzi: string,
+    pinyin: string,
+    tone?: number,
+    repetitions: number = 3
+  ) => {
+    for (let i = 0; i < repetitions; i++) {
+      await ttsControls.speakChinese({
+        hanzi,
+        pinyin,
+        tone,
+        speed: 0.7,
+      });
+      
+      // Pause between repetitions
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }, [ttsControls]);
 
   return {
-    ...state,
+    ...ttsState,
     speakForPractice,
-    speakExample,
-    ...controls,
+    repeatPronunciation,
+    ...ttsControls,
   };
 }
 
 /**
- * 🎯 Hook cho lesson content
+ * 📖 Specialized hook for lesson content
  */
 export function useLessonTTS() {
-  const [state, controls] = useTTS('lesson-tts');
+  const [ttsState, ttsControls] = useTTS('lesson-tts');
 
-  const speakLesson = useCallback(async (
-    text: string,
-    language: 'zh-CN' | 'vi-VN' | 'en-US' = 'zh-CN',
-    speed: number = 1.0
-  ) => {
-    await controls.speak(text, {
-      language,
-      speed,
+  const speakLessonContent = useCallback(async (content: {
+    chinese: string;
+    vietnamese?: string;
+    speed?: number;
+  }) => {
+    // Speak Chinese first
+    await ttsControls.speak(content.chinese, {
+      language: 'zh-CN',
+      speed: content.speed || 1.0,
     });
-  }, [controls]);
+
+    // Optional: speak Vietnamese translation
+    if (content.vietnamese) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await ttsControls.speak(content.vietnamese, {
+        language: 'vi-VN',
+        speed: content.speed || 1.0,
+      });
+    }
+  }, [ttsControls]);
 
   return {
-    ...state,
-    speakLesson,
-    ...controls,
+    ...ttsState,
+    speakLessonContent,
+    ...ttsControls,
   };
 }
 

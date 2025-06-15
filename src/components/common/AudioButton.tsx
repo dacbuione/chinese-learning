@@ -2,7 +2,7 @@ import React from 'react';
 import { TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, getResponsiveSpacing } from '../../theme';
-import { useVocabularyTTS } from '../../hooks/useTTS';
+import { useVocabularyTTS, usePronunciationTTS } from '../../hooks/useTTS';
 
 /**
  * 🎵 AudioButton Component
@@ -61,7 +61,11 @@ export const AudioButton: React.FC<AudioButtonProps> = ({
       } else {
         // Nếu không play thì bắt đầu
         onPlayStart?.();
-        await speakVocabulary(hanzi, pinyin, tone, speed);
+        await speakVocabulary({
+          simplified: hanzi,
+          pinyin,
+          tone,
+        });
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Audio playback failed';
@@ -152,16 +156,74 @@ export const PronunciationAudioButton: React.FC<{
   pinyin: string;
   tone: number;
   size?: 'small' | 'medium' | 'large';
-}> = ({ hanzi, pinyin, tone, size = 'large' }) => (
-  <AudioButton
-    hanzi={hanzi}
-    pinyin={pinyin}
-    tone={tone}
-    speed={0.8} // Slower for practice
-    size={size}
-    variant="primary"
-  />
-);
+}> = ({ hanzi, pinyin, tone, size = 'large' }) => {
+  const {
+    isLoading,
+    isPlaying,
+    error,
+    speakForPractice,
+    stop,
+  } = usePronunciationTTS();
+
+  const handlePress = async () => {
+    try {
+      console.log(`🎯 PronunciationAudioButton clicked: ${hanzi}`);
+      if (isPlaying) {
+        console.log('🛑 Stopping audio...');
+        await stop();
+      } else {
+        console.log('▶️ Starting pronunciation...');
+        await speakForPractice(hanzi, 0.8); // Slower for practice
+      }
+    } catch (err) {
+      console.error('❌ Pronunciation audio error:', err);
+    }
+  };
+
+  const getIcon = () => {
+    if (isLoading) return null;
+    if (isPlaying) return 'stop';
+    return 'volume-high';
+  };
+
+  const buttonStyle = [
+    styles.button,
+    styles[`button_${size}`],
+    styles.button_primary,
+    isPlaying && styles.button_playing,
+    error && styles.button_error,
+  ];
+
+  const iconSize = {
+    small: 16,
+    medium: 20,
+    large: 24,
+  }[size];
+
+  return (
+    <TouchableOpacity
+      style={buttonStyle}
+      onPress={handlePress}
+      disabled={isLoading}
+      activeOpacity={0.7}
+      accessibilityLabel={`Phát âm ${hanzi}`}
+      accessibilityRole="button"
+    >
+      {isLoading ? (
+        <ActivityIndicator 
+          size={iconSize} 
+          color={colors.neutral[50]}
+        />
+      ) : (
+        <Ionicons
+          name={getIcon() as any}
+          size={iconSize}
+          color={colors.neutral[50]}
+        />
+      )}
+    </TouchableOpacity>
+  );
+};
 
 // Minimal button cho inline text
 export const InlineAudioButton: React.FC<{

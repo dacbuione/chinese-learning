@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { colors, getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../src/theme';
-import { useTranslation } from '../../src/hooks/useTranslation';
-import { Button } from '../../src/components/common/Button';
+import { useTranslation } from '../../src/localization/hooks/useTranslation';
+import { Button } from '../../src/components/ui/atoms/Button/Button';
 import { PronunciationAudioButton, InlineAudioButton } from '../../src/components/common/AudioButton';
 import { usePronunciationTTS } from '../../src/hooks/useTTS';
 
@@ -87,18 +87,18 @@ export default function PronunciationPractice() {
     isPlaying,
     error,
     speakForPractice,
-    speakExample,
+    repeatPronunciation,
     stop,
     clearError,
   } = usePronunciationTTS();
 
   const handlePlayPronunciation = async () => {
     try {
-      await speakForPractice(
+      await repeatPronunciation(
         selectedExample.hanzi,
         selectedExample.pinyin,
         selectedExample.tone,
-        playbackSpeed
+        1 // Single repetition
       );
     } catch (err) {
       console.error('Pronunciation playback error:', err);
@@ -107,7 +107,7 @@ export default function PronunciationPractice() {
 
   const handlePlayExample = async (text: string) => {
     try {
-      await speakExample(text, playbackSpeed);
+      await speakForPractice(text, playbackSpeed);
     } catch (err) {
       console.error('Example playback error:', err);
     }
@@ -204,11 +204,12 @@ export default function PronunciationPractice() {
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>❌ {error}</Text>
               <Button
-                title="Thử lại"
                 onPress={clearError}
                 variant="outline"
-                size="small"
-              />
+                size="sm"
+              >
+                Thử lại
+              </Button>
             </View>
           )}
         </View>
@@ -220,11 +221,12 @@ export default function PronunciationPractice() {
             {[0.5, 0.8, 1.0, 1.2].map((speed) => (
               <Button
                 key={speed}
-                title={`${speed}x`}
                 onPress={() => setPlaybackSpeed(speed)}
                 variant={playbackSpeed === speed ? 'primary' : 'outline'}
-                size="small"
-              />
+                size="sm"
+              >
+                {`${speed}x`}
+              </Button>
             ))}
           </View>
         </View>
@@ -256,11 +258,12 @@ export default function PronunciationPractice() {
                   />
                   
                   <Button
-                    title="Chọn"
                     onPress={() => setSelectedExample(example)}
                     variant={selectedExample.id === example.id ? 'primary' : 'outline'}
-                    size="small"
-                  />
+                    size="sm"
+                  >
+                    Chọn
+                  </Button>
                 </View>
               </View>
               

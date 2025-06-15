@@ -107,25 +107,22 @@ export const VocabularyCard: React.FC<VocabularyCardProps> = ({
       
       if (onPlayAudio) {
         onPlayAudio(word);
-      } else if (word.audioUrl) {
-        // Play actual audio file
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: word.audioUrl },
-          { shouldPlay: true }
-        );
-        setSound(newSound);
-        
-        newSound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            setIsPlayingAudio(false);
-          }
-        });
       } else {
-        // Simulate audio playback for demo
-        setTimeout(() => {
-          setIsPlayingAudio(false);
-        }, 1000);
+        // Use Expo Speech for TTS
+        const { expoTTSService } = await import('../../services/tts/ExpoTTSService');
+        await expoTTSService.synthesizeChinese(
+          word.simplified,
+          word.pinyin,
+          undefined, // No specific tone number available
+          1.0 // Normal speed
+        );
       }
+      
+      // Reset playing state after a delay
+      setTimeout(() => {
+        setIsPlayingAudio(false);
+      }, 1500);
+      
     } catch (error) {
       console.log('Audio playback error:', error);
       setIsPlayingAudio(false);
@@ -265,7 +262,7 @@ export const VocabularyCard: React.FC<VocabularyCardProps> = ({
           {/* Tap to reveal hint */}
           <TouchableOpacity style={styles.flipHint} onPress={handleFlip}>
             <Text style={styles.flipHintText}>
-              {t.vocabulary.tapToReveal || 'Nhấn để xem nghĩa'}
+              {'Nhấn để xem nghĩa'}
             </Text>
             <Ionicons name="eye-outline" size={16} color={colors.neutral[500]} />
           </TouchableOpacity>
@@ -346,7 +343,7 @@ export const VocabularyCard: React.FC<VocabularyCardProps> = ({
           {/* Flip back hint */}
           <TouchableOpacity style={styles.flipHint} onPress={handleFlip}>
             <Text style={styles.flipHintText}>
-              {t.vocabulary.tapToHide || 'Nhấn để ẩn nghĩa'}
+              {'Nhấn để ẩn nghĩa'}
             </Text>
             <Ionicons name="eye-off-outline" size={16} color={colors.neutral[500]} />
           </TouchableOpacity>

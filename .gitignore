@@ -31,5 +31,9 @@ yarn-error.*
 .env*.local
 .env
 
+# Google Cloud credentials
+google-cloud-key.json
+chinese-learning-app-*.json
+
 # typescript
 *.tsbuildinfo

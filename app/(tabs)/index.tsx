@@ -231,7 +231,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   welcomeSection: {
-    background: `linear-gradient(135deg, ${colors.primary[500]} 0%, ${colors.primary[600]} 100%)`,
     marginHorizontal: getResponsiveSpacing('lg'),
     marginTop: getResponsiveSpacing('md'),
     borderRadius: Layout.isMobile ? 16 : 20,

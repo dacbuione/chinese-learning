@@ -239,6 +239,24 @@ export const Loading: React.FC<LoadingProps> = ({
       justifyContent: 'center',
       padding: getResponsiveSpacing('md'),
     },
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    loadingContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    animationContainer: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     spinner: {
       width: sizeConfig.container,
       height: sizeConfig.container,
@@ -305,6 +323,22 @@ export const Loading: React.FC<LoadingProps> = ({
       color: colors.neutral[600],
       textAlign: 'center',
       fontWeight: '500',
+    },
+    pinyinText: {
+      fontSize: sizeConfig.text * 0.8,
+      color: colors.neutral[500],
+      textAlign: 'center',
+    },
+    skeletonLine: {
+      backgroundColor: colors.neutral[200],
+      borderRadius: 4,
+      marginBottom: 8,
+    },
+    skeletonAvatar: {
+      backgroundColor: colors.neutral[200],
+      borderRadius: 50,
+      width: 40,
+      height: 40,
     },
   }), [sizeConfig, themeColors, textPosition, Layout]);
 
@@ -424,7 +458,10 @@ export const Loading: React.FC<LoadingProps> = ({
         return (
           <View style={[
             loadingStyles.skeletonContainer,
-            { height: skeletonHeight, width: skeletonWidth }
+            { 
+              height: skeletonHeight, 
+              width: typeof skeletonWidth === 'string' ? skeletonWidth as any : skeletonWidth 
+            }
           ]}>
             <AnimatedView style={[loadingStyles.skeletonShimmer, shimmerAnimatedStyle]}>
               <LinearGradient

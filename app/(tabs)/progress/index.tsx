@@ -288,10 +288,10 @@ export default function ProgressScreen() {
         {achievements.map((achievement) => (
           <Card 
             key={achievement.id} 
-            style={[
+            style={StyleSheet.flatten([
               styles.achievementCard,
-              !achievement.unlocked && styles.achievementCardLocked
-            ]}
+              !achievement.unlocked && { opacity: 0.6 }
+            ])}
           >
             <View style={styles.achievementContent}>
               <View style={[

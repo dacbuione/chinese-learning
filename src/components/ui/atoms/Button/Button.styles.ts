@@ -55,6 +55,10 @@ export const createButtonStyles = (variant: ButtonVariant, size: ButtonSize, ful
       backgroundColor: colors.error[500],
       borderColor: colors.error[500],
     },
+    gradient: {
+      backgroundColor: colors.primary[500],
+      borderColor: colors.primary[500],
+    },
   };
 
   // Text color variants
@@ -64,6 +68,7 @@ export const createButtonStyles = (variant: ButtonVariant, size: ButtonSize, ful
     outline: colors.primary[500],
     ghost: colors.primary[500],
     danger: colors.neutral[50],
+    gradient: colors.neutral[50],
   };
 
   // Size styles

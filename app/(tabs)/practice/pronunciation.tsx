@@ -1,19 +1,39 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, SafeAreaView, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 
-// Components  
+// Components
 import { TranslationText } from '../../../src/components/ui/atoms/Text';
 import { Button } from '../../../src/components/ui/atoms/Button';
 import { Card } from '../../../src/components/ui/atoms/Card';
 
+// Hooks
+import { usePronunciationTTS } from '../../../src/hooks/useTTS';
+
 // Theme
 import { colors, getResponsiveSpacing } from '../../../src/theme';
 import { ArrowLeft, Mic, Volume2, Pause } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function PronunciationPracticeScreen() {
   const router = useRouter();
-  
+
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    error: ttsError,
+    speakForPractice,
+    stop: stopTTS,
+  } = usePronunciationTTS();
+
   // Sample pronunciation exercises
   const pronunciationExercises = [
     {
@@ -56,18 +76,25 @@ export default function PronunciationPracticeScreen() {
 
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   const currentExercise = pronunciationExercises[currentExerciseIndex];
 
-  const handlePlayAudio = () => {
-    setIsPlaying(true);
-    // Simulate audio playback
-    setTimeout(() => {
-      setIsPlaying(false);
-    }, 2000);
-    
-    Alert.alert('Phát âm thanh', `Đang phát: ${currentExercise.pinyin}`);
+
+
+  const handlePlayAudio = async () => {
+    try {
+      console.log(`🎯 Playing pronunciation for: ${currentExercise.character}`);
+      if (isTTSPlaying) {
+        console.log('🛑 Stopping TTS...');
+        await stopTTS();
+      } else {
+        console.log('▶️ Starting TTS...');
+        await speakForPractice(currentExercise.character, 0.8); // Slower speed for practice
+      }
+    } catch (error) {
+      console.error('❌ TTS Error:', error);
+      Alert.alert('Lỗi phát âm', 'Không thể phát âm thanh. Vui lòng thử lại.');
+    }
   };
 
   const handleStartRecording = () => {
@@ -81,31 +108,39 @@ export default function PronunciationPracticeScreen() {
 
   const nextExercise = () => {
     if (currentExerciseIndex < pronunciationExercises.length - 1) {
-      setCurrentExerciseIndex(prev => prev + 1);
+      setCurrentExerciseIndex((prev) => prev + 1);
     }
   };
 
   const previousExercise = () => {
     if (currentExerciseIndex > 0) {
-      setCurrentExerciseIndex(prev => prev - 1);
+      setCurrentExerciseIndex((prev) => prev - 1);
     }
   };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'beginner': return colors.accent[500];
-      case 'intermediate': return colors.warning[500];
-      case 'advanced': return colors.error[500];
-      default: return colors.neutral[500];
+      case 'beginner':
+        return colors.accent[500];
+      case 'intermediate':
+        return colors.warning[500];
+      case 'advanced':
+        return colors.error[500];
+      default:
+        return colors.neutral[500];
     }
   };
 
   const getDifficultyLabel = (difficulty: string) => {
     switch (difficulty) {
-      case 'beginner': return 'Cơ bản';
-      case 'intermediate': return 'Trung bình';
-      case 'advanced': return 'Nâng cao';
-      default: return '';
+      case 'beginner':
+        return 'Cơ bản';
+      case 'intermediate':
+        return 'Trung bình';
+      case 'advanced':
+        return 'Nâng cao';
+      default:
+        return '';
     }
   };
 
@@ -116,7 +151,7 @@ export default function PronunciationPracticeScreen() {
         <Button variant="ghost" size="sm" onPress={() => router.back()}>
           <ArrowLeft size={20} color={colors.neutral[700]} />
         </Button>
-        
+
         <View style={styles.headerTitle}>
           <TranslationText size="lg" weight="bold" color={colors.neutral[900]}>
             Luyện phát âm
@@ -125,19 +160,28 @@ export default function PronunciationPracticeScreen() {
             {currentExerciseIndex + 1}/{pronunciationExercises.length}
           </TranslationText>
         </View>
-        
+
         <View style={{ width: 40 }} />
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+      >
         <Card variant="default" style={styles.exerciseCard}>
           {/* Difficulty Badge */}
           <View style={styles.difficultyContainer}>
-            <View style={[
-              styles.difficultyBadge, 
-              { backgroundColor: getDifficultyColor(currentExercise.difficulty) }
-            ]}>
+            <View
+              style={[
+                styles.difficultyBadge,
+                {
+                  backgroundColor: getDifficultyColor(
+                    currentExercise.difficulty
+                  ),
+                },
+              ]}
+            >
               <TranslationText size="xs" color={colors.neutral[50]}>
                 {getDifficultyLabel(currentExercise.difficulty)}
               </TranslationText>
@@ -152,13 +196,21 @@ export default function PronunciationPracticeScreen() {
           </View>
 
           {/* Pinyin */}
-          <TranslationText size="2xl" color={colors.primary[600]} style={styles.pinyin}>
+          <TranslationText
+            size="2xl"
+            color={colors.primary[600]}
+            style={styles.pinyin}
+          >
             {currentExercise.pinyin}
           </TranslationText>
 
           {/* Translations */}
           <View style={styles.translationsContainer}>
-            <TranslationText size="lg" weight="medium" color={colors.neutral[800]}>
+            <TranslationText
+              size="lg"
+              weight="medium"
+              color={colors.neutral[800]}
+            >
               {currentExercise.vietnamese}
             </TranslationText>
             <TranslationText size="base" color={colors.neutral[600]}>
@@ -168,41 +220,39 @@ export default function PronunciationPracticeScreen() {
 
           {/* Audio Controls */}
           <View style={styles.audioControls}>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onPress={handlePlayAudio}
-              disabled={isPlaying}
+            {/* Audio Button */}
+            <TouchableOpacity
               style={styles.audioButton}
+              onPress={handlePlayAudio}
             >
-              {isPlaying ? (
-                <Pause size={24} color={colors.primary[500]} />
-              ) : (
-                <Volume2 size={24} color={colors.primary[500]} />
-              )}
-              <TranslationText size="base" color={colors.primary[500]}>
-                {isPlaying ? 'Đang phát...' : 'Nghe phát âm'}
-              </TranslationText>
-            </Button>
+              <Ionicons
+                name="volume-high"
+                size={32}
+                color={colors.primary[500]}
+              />
+            </TouchableOpacity>
 
-            <Button 
-              variant="primary" 
-              size="lg" 
+            <Button
+              variant="primary"
+              size="lg"
               onPress={handleStartRecording}
               disabled={isRecording}
               style={styles.recordButton}
             >
               <Mic size={24} color={colors.neutral[50]} />
-              <TranslationText size="base" color={colors.neutral[50]}>
-                {isRecording ? 'Đang ghi âm...' : 'Ghi âm luyện tập'}
-              </TranslationText>
             </Button>
+
+
           </View>
         </Card>
 
         {/* Tips */}
         <Card variant="default" style={styles.tipsContainer}>
-          <TranslationText size="sm" weight="medium" color={colors.primary[600]}>
+          <TranslationText
+            size="sm"
+            weight="medium"
+            color={colors.primary[600]}
+          >
             💡 Mẹo phát âm:
           </TranslationText>
           <TranslationText size="sm" color={colors.neutral[600]}>
@@ -219,9 +269,9 @@ export default function PronunciationPracticeScreen() {
 
       {/* Navigation Footer */}
       <View style={styles.footer}>
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           onPress={previousExercise}
           disabled={currentExerciseIndex === 0}
         >
@@ -229,7 +279,7 @@ export default function PronunciationPracticeScreen() {
             Trước
           </TranslationText>
         </Button>
-        
+
         <View style={styles.progressIndicator}>
           {pronunciationExercises.map((_, index) => (
             <View
@@ -237,18 +287,19 @@ export default function PronunciationPracticeScreen() {
               style={[
                 styles.progressDot,
                 {
-                  backgroundColor: index === currentExerciseIndex 
-                    ? colors.primary[500] 
-                    : colors.neutral[300]
-                }
+                  backgroundColor:
+                    index === currentExerciseIndex
+                      ? colors.primary[500]
+                      : colors.neutral[300],
+                },
               ]}
             />
           ))}
         </View>
-        
-        <Button 
-          variant="outline" 
-          size="sm" 
+
+        <Button
+          variant="outline"
+          size="sm"
           onPress={nextExercise}
           disabled={currentExerciseIndex === pronunciationExercises.length - 1}
         >
@@ -322,17 +373,22 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: getResponsiveSpacing('md'),
   },
+
   audioButton: {
-    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: colors.primary[500],
+    height: 50,
+    borderRadius: 50,
+    backgroundColor: colors.primary[50],
     justifyContent: 'center',
-    gap: getResponsiveSpacing('sm'),
-    paddingVertical: getResponsiveSpacing('md'),
+    alignItems: 'center',
   },
+
   recordButton: {
     flexDirection: 'row',
+    borderRadius: 50,
+    height: 50,
     justifyContent: 'center',
-    gap: getResponsiveSpacing('sm'),
-    paddingVertical: getResponsiveSpacing('md'),
   },
   tipsContainer: {
     padding: getResponsiveSpacing('lg'),
@@ -357,4 +413,5 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-}); 
+
+});
