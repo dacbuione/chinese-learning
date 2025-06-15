@@ -1,0 +1,193 @@
+Tuyệt vời! Tôi sẽ lên kế hoạch tích hợp AI Text-to-Speech để thay thế audio có sẵn. Dựa trên thông tin về Google Cloud Text-to-Speech API và nghiên cứu các giải pháp khác, đây là plan chi tiết:
+
+## 🎯 **KẾ HOẠCH TÍCH HỢP AI TEXT-TO-SPEECH**
+
+### 📊 **PHÂN TÍCH CÁC CÔNG NGHỆ TỐI ƯU**
+
+#### 1. **🔥 Google Cloud Text-to-Speech API** ⭐⭐⭐⭐⭐
+**Ưu điểm:**
+- **380+ giọng nói** trên **50+ ngôn ngữ** (bao gồm tiếng Trung Mandarin)
+- **WaveNet voices** chất lượng gần như con người
+- **Neural2 voices** với công nghệ mới nhất
+- **Custom Voice** - tạo giọng nói riêng cho thương hiệu
+- **SSML support** - điều khiển phát âm, tốc độ, ngữ điệu
+- **Miễn phí**: 1 triệu ký tự/tháng đầu tiên
+- **Hỗ trợ tiếng Trung**: Mandarin (Simplified/Traditional)
+
+**Nhược điểm:**
+- Cần Google Cloud account
+- Sau 1M ký tự: $4.00/1M ký tự (Standard), $16.00/1M ký tự (WaveNet)
+
+#### 2. **🌐 Web Speech API (Browser Native)** ⭐⭐⭐⭐
+**Ưu điểm:**
+- **Hoàn toàn miễn phí**
+- Tích hợp sẵn trong browser
+- Không cần API key
+- Hỗ trợ nhiều ngôn ngữ
+- Offline capability
+
+**Nhược điểm:**
+- Chất lượng giọng nói thấp hơn
+- Không có tiếng Trung chất lượng cao
+- Phụ thuộc vào browser support
+
+#### 3. **🎵 ElevenLabs API** ⭐⭐⭐⭐⭐
+**Ưu điểm:**
+- Chất lượng giọng nói **cực kỳ tự nhiên**
+- **Voice cloning** technology
+- **Miễn phí**: 10,000 ký tự/tháng
+- Hỗ trợ nhiều ngôn ngữ
+
+**Nhược điểm:**
+- Giới hạn miễn phí thấp
+- Chưa tối ưu cho tiếng Trung
+- Pricing cao: $5/tháng cho 30K ký tự
+
+#### 4. **🔊 Azure Cognitive Services Speech** ⭐⭐⭐⭐
+**Ưu điểm:**
+- **Miễn phí**: 500,000 ký tự/tháng
+- Neural voices chất lượng cao
+- Hỗ trợ tiếng Trung tốt
+- SSML support
+
+**Nhược điểm:**
+- Cần Azure account
+- Phức tạp hơn Google
+
+#### 5. **🆓 Open Source Solutions** ⭐⭐⭐
+**Ưu điểm:**
+- **Hoàn toàn miễn phí**
+- Có thể tự host
+- Không giới hạn usage
+
+**Nhược điểm:**
+- Chất lượng thấp hơn
+- Cần setup phức tạp
+- Ít hỗ trợ tiếng Trung
+
+---
+
+## 🏆 **TOP 3 LỰA CHỌN ĐƯỢC KHUYẾN NGHỊ**
+
+### **🥇 OPTION 1: Google Cloud Text-to-Speech** 
+```typescript
+// Ưu điểm cho Chinese Learning App
+✅ 1M ký tự miễn phí/tháng (đủ cho 10,000+ users)
+✅ Chất lượng WaveNet voices tuyệt vời
+✅ Hỗ trợ tiếng Trung Mandarin chuyên nghiệp
+✅ SSML để điều chỉnh thanh điệu (perfect cho 4 tones)
+✅ Custom Voice để tạo giọng thầy/cô riêng
+✅ Scalable cho production
+```
+
+### **🥈 OPTION 2: Hybrid Approach (Web Speech + Google)**
+```typescript
+// Chiến lược thông minh
+✅ Web Speech API cho basic words (miễn phí)
+✅ Google TTS cho important content (tiết kiệm cost)
+✅ Fallback mechanism
+✅ Offline capability
+```
+
+### **🥉 OPTION 3: Azure Cognitive Services**
+```typescript
+// Alternative tốt
+✅ 500K ký tự miễn phí/tháng
+✅ Neural voices chất lượng
+✅ Pricing competitive
+```
+
+---
+
+## 🛠️ **IMPLEMENTATION PLAN**
+
+### **Phase 1: Research & Setup (1-2 ngày)**
+1. **Setup Google Cloud Project**
+2. **Enable Text-to-Speech API**
+3. **Test voice quality** cho tiếng Trung
+4. **Benchmark performance**
+
+### **Phase 2: Integration (3-4 ngày)**
+1. **Create TTS Service Layer**
+2. **Implement caching mechanism**
+3. **Add SSML for tone control**
+4. **Error handling & fallbacks**
+
+### **Phase 3: Optimization (2-3 ngày)**
+1. **Audio caching strategy**
+2. **Batch processing**
+3. **Cost optimization**
+4. **Performance tuning**
+
+---
+
+## 💰 **COST ANALYSIS**
+
+### **Google Cloud TTS Pricing:**
+- **Miễn phí**: 1,000,000 ký tự/tháng
+- **Standard voices**: $4.00/1M ký tự
+- **WaveNet voices**: $16.00/1M ký tự
+
+### **Ước tính cho Chinese Learning App:**
+- **10,000 users active/tháng**
+- **Mỗi user**: ~100 ký tự TTS/session
+- **Total**: ~1M ký tự/tháng = **MIỄN PHÍ!** 🎉
+
+---
+
+## 🎯 **TECHNICAL ARCHITECTURE**
+
+```typescript
+// TTS Service Architecture
+interface TTSService {
+  // Core methods
+  synthesize(text: string, options: TTSOptions): Promise<AudioBuffer>
+  
+  // Chinese-specific
+  synthesizeWithTones(hanzi: string, pinyin: string): Promise<AudioBuffer>
+  
+  // Caching
+  getCachedAudio(key: string): AudioBuffer | null
+  setCachedAudio(key: string, audio: AudioBuffer): void
+  
+  // Fallback
+  fallbackToWebSpeech(text: string): Promise<AudioBuffer>
+}
+
+interface TTSOptions {
+  language: 'zh-CN' | 'zh-TW' | 'vi-VN' | 'en-US'
+  voice: string
+  speed: number
+  pitch: number
+  ssml?: string
+}
+```
+
+---
+
+## 🤔 **CÂU HỎI CHO BẠN**
+
+Bạn muốn tôi implement option nào?
+
+### **A. 🔥 Google Cloud TTS (Recommended)**
+- Chất lượng cao nhất
+- Perfect cho tiếng Trung
+- Miễn phí cho app size hiện tại
+- Production-ready
+
+### **B. 🌐 Hybrid Approach**
+- Tiết kiệm cost tối đa
+- Web Speech + Google TTS
+- Phức tạp hơn nhưng flexible
+
+### **C. 🔊 Azure Alternative**
+- 500K ký tự miễn phí
+- Chất lượng tốt
+- Ít phổ biến hơn
+
+### **D. 🆓 Web Speech Only**
+- Hoàn toàn miễn phí
+- Chất lượng thấp hơn
+- Quick implementation
+
+**Bạn chọn option nào? Tôi sẽ implement ngay với code chi tiết!** 🚀

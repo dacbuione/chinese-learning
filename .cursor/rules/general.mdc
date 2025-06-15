@@ -1,0 +1,763 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# 🇨🇳 Chinese Learning App - Master Development Guide
+
+## 📱 React Native Development Rules
+
+### 🔄 Process Management
+```bash
+# ✅ REQUIRED: Always stop previous processes before starting
+# Check running processes
+lsof -i :8081 -i :19000 -i :19001 -i :19002
+
+# Kill all processes
+pkill -f expo
+pkill -f metro
+
+# Clear cache before starting
+npx expo start --clear
+
+# Start with specific port (if needed)
+npx expo start --port 8081
+```
+
+### 🛠️ Development Workflow
+```bash
+# Daily development routine:
+1. pkill -f expo && pkill -f metro    # Kill previous processes
+2. npx expo start --clear             # Clear cache and start
+3. npx expo install --fix             # Fix dependencies if issues
+```
+
+### 📂 Chinese Learning App File Structure
+```
+app/                           # Expo Router pages
+├── (tabs)/                   # Tab navigation
+│   ├── index.tsx            # Home screen (học tập)
+│   ├── lessons/             # Lesson screens
+│   │   ├── index.tsx        # Lesson list
+│   │   ├── course/          # Course details
+│   │   ├── lesson/          # Individual lessons
+│   │   ├── pronunciation/   # Tone practice
+│   │   └── writing/         # Character writing
+│   └── profile.tsx          # User profile
+├── _layout.tsx              # Root layout
+└── +not-found.tsx          # 404 page
+
+src/
+├── components/
+│   ├── common/              # Reusable UI components
+│   └── lessons/             # Learning-specific components
+├── redux/                   # State management
+├── theme/                   # Design system
+└── utils/                   # Helper functions
+```
+
+---
+
+## 📱 Responsive Design System
+
+### 🎯 Device Breakpoints
+```tsx
+// Theme configuration for Chinese Learning App
+export const breakpoints = {
+  mobile: 0,        // 0px - 767px (iPhone, Android phones)
+  tablet: 768,      // 768px - 1023px (iPad, Android tablets)
+  desktop: 1024,    // 1024px+ (Desktop/laptop)
+} as const;
+
+export const deviceTypes = {
+  mobile: { width: 375, height: 812 },    // iPhone 13 Pro
+  tablet: { width: 768, height: 1024 },   // iPad
+  desktop: { width: 1200, height: 800 },  // Laptop
+} as const;
+
+// Responsive utilities
+export const Layout = {
+  isMobile: Dimensions.get('window').width < breakpoints.tablet,
+  isTablet: Dimensions.get('window').width >= breakpoints.tablet && 
+            Dimensions.get('window').width < breakpoints.desktop,
+  isDesktop: Dimensions.get('window').width >= breakpoints.desktop,
+  screenWidth: Dimensions.get('window').width,
+  screenHeight: Dimensions.get('window').height,
+};
+```
+
+### 📐 Responsive Spacing System
+```tsx
+// Spacing scale for Chinese Learning App
+export const spacing = {
+  xs: 4,    // Minimal spacing
+  sm: 8,    // Small spacing
+  md: 16,   // Medium spacing
+  lg: 24,   // Large spacing
+  xl: 32,   // Extra large spacing
+  '2xl': 48, // Double extra large
+  '3xl': 64, // Triple extra large
+} as const;
+
+// Responsive spacing function
+export const getResponsiveSpacing = (size: keyof typeof spacing) => {
+  const base = spacing[size];
+  
+  if (Layout.isMobile) return base;
+  if (Layout.isTablet) return Math.round(base * 1.2);
+  return Math.round(base * 1.4);
+};
+```
+
+### 🎨 Typography System for Chinese Characters
+```tsx
+export const typography = {
+  fonts: {
+    regular: 'System',
+    medium: 'System',
+    bold: 'System',
+    chinese: 'System', // Optimized for Chinese characters
+  },
+  sizes: {
+    xs: 12,
+    sm: 14,
+    base: 16,
+    lg: 18,
+    xl: 20,
+    '2xl': 24,
+    '3xl': 30,
+    '4xl': 36,
+    '5xl': 48,
+    '6xl': 64,  // For large Chinese characters
+    '7xl': 80,  // For practice characters
+  },
+  weights: {
+    normal: '400' as const,
+    medium: '500' as const,
+    semibold: '600' as const,
+    bold: '700' as const,
+  },
+  lineHeights: {
+    tight: 1.2,
+    normal: 1.5,
+    relaxed: 1.75,
+  },
+};
+
+// Responsive font size function
+export const getResponsiveFontSize = (size: keyof typeof typography.sizes) => {
+  const base = typography.sizes[size];
+  
+  if (Layout.isMobile) return base;
+  if (Layout.isTablet) return Math.round(base * 1.1);
+  return Math.round(base * 1.2);
+};
+```
+
+### 🌈 Color System for Learning App
+```tsx
+export const colors = {
+  // Primary colors (Chinese red theme)
+  primary: {
+    50: '#FEF2F2',
+    100: '#FEE2E2',
+    500: '#DC2626',  // Main Chinese red
+    600: '#B91C1C',
+    900: '#7F1D1D',
+  },
+  
+  // Secondary colors (Gold/Yellow)
+  secondary: {
+    50: '#FFFBEB',
+    100: '#FEF3C7',
+    500: '#F59E0B',  // Chinese gold
+    600: '#D97706',
+  },
+  
+  // Accent colors (Green for success)
+  accent: {
+    50: '#F0FDF4',
+    500: '#10B981',  // Success green
+    600: '#059669',
+  },
+  
+  // Tone colors for Chinese tones
+  tones: {
+    tone1: '#DC2626',  // First tone - red
+    tone2: '#F59E0B',  // Second tone - yellow
+    tone3: '#10B981',  // Third tone - green
+    tone4: '#3B82F6',  // Fourth tone - blue
+    neutral: '#6B7280', // Neutral tone - gray
+  },
+  
+  // Neutral colors
+  neutral: {
+    50: '#F9FAFB',
+    100: '#F3F4F6',
+    200: '#E5E7EB',
+    400: '#9CA3AF',
+    500: '#6B7280',
+    600: '#4B5563',
+    700: '#374151',
+    800: '#1F2937',
+    900: '#111827',
+  },
+  
+  // Status colors
+  success: {
+    50: '#F0FDF4',
+    500: '#10B981',
+    600: '#059669',
+  },
+  warning: {
+    50: '#FFFBEB',
+    500: '#F59E0B',
+    600: '#D97706',
+  },
+  error: {
+    50: '#FEF2F2',
+    500: '#EF4444',
+    600: '#DC2626',
+  },
+};
+```
+
+---
+
+## 🎨 Component Styling Patterns
+
+### 📱 Required Responsive Patterns
+```tsx
+// ✅ ALWAYS import these for styling
+import { 
+  getResponsiveSpacing, 
+  getResponsiveFontSize, 
+  Layout,
+  colors,
+  typography,
+  spacing,
+} from '../theme';
+
+// ✅ Chinese Learning App component pattern
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.neutral[50],
+    padding: getResponsiveSpacing('lg'),
+  },
+  
+  // Chinese character display
+  hanziText: {
+    fontSize: getResponsiveFontSize('6xl'),
+    fontFamily: typography.fonts.chinese,
+    color: colors.neutral[900],
+    textAlign: 'center',
+    lineHeight: typography.lineHeights.tight,
+  },
+  
+  // Pinyin text
+  pinyinText: {
+    fontSize: getResponsiveFontSize('xl'),
+    color: colors.primary[600],
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  
+  // Responsive card layout
+  card: {
+    backgroundColor: colors.neutral[50],
+    borderRadius: Layout.isMobile ? 12 : 16,
+    padding: getResponsiveSpacing(Layout.isMobile ? 'md' : 'lg'),
+    marginBottom: getResponsiveSpacing('md'),
+    shadowColor: colors.neutral[900],
+    shadowOffset: {
+      width: 0,
+      height: Layout.isMobile ? 2 : 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: Layout.isMobile ? 3 : 6,
+    elevation: Layout.isMobile ? 3 : 6,
+  },
+  
+  // Responsive grid for vocabulary cards
+  vocabularyGrid: {
+    flexDirection: Layout.isTablet ? 'row' : 'column',
+    flexWrap: Layout.isTablet ? 'wrap' : 'nowrap',
+    gap: getResponsiveSpacing('md'),
+  },
+  
+  vocabularyCard: {
+    width: Layout.isTablet ? '48%' : '100%',
+    minHeight: Layout.isMobile ? 120 : 150,
+  },
+  
+  // Tone indicator styling
+  toneIndicator: {
+    width: Layout.isMobile ? 8 : 12,
+    height: Layout.isMobile ? 8 : 12,
+    borderRadius: Layout.isMobile ? 4 : 6,
+  },
+  
+  // Button responsive styling
+  primaryButton: {
+    backgroundColor: colors.primary[500],
+    paddingHorizontal: getResponsiveSpacing('lg'),
+    paddingVertical: getResponsiveSpacing('md'),
+    borderRadius: Layout.isMobile ? 8 : 12,
+    minHeight: Layout.isMobile ? 44 : 48, // Touch target
+  },
+  
+  buttonText: {
+    fontSize: getResponsiveFontSize('base'),
+    fontWeight: typography.weights.medium,
+    color: colors.neutral[50],
+    textAlign: 'center',
+  },
+});
+```
+
+### ❌ FORBIDDEN Styling Anti-patterns
+```tsx
+// ❌ NEVER use hardcoded values
+padding: 16,                    // Use: getResponsiveSpacing('lg')
+fontSize: 24,                   // Use: getResponsiveFontSize('xl')
+color: '#DC2626',              // Use: colors.primary[500]
+width: 300,                     // Use: Layout.isTablet ? '48%' : '100%'
+flexDirection: 'row',           // Use: Layout.isTablet ? 'row' : 'column'
+```
+
+---
+
+## 🎯 Chinese Learning App Specific Components
+
+### 📚 Vocabulary Card Component
+```tsx
+// ✅ Standard vocabulary card with responsive design
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors, getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../theme';
+
+interface VocabularyCardProps {
+  hanzi: string;
+  pinyin: string;
+  english: string;
+  vietnamese: string;
+  tone: number;
+  onPress: () => void;
+}
+
+export const VocabularyCard: React.FC<VocabularyCardProps> = ({
+  hanzi, pinyin, english, vietnamese, tone, onPress
+}) => {
+  const toneColor = colors.tones[`tone${tone}` as keyof typeof colors.tones] || colors.neutral[500];
+  
+  return (
+    <TouchableOpacity style={styles.card} onPress={onPress}>
+      <View style={styles.toneRow}>
+        <View style={[styles.toneIndicator, { backgroundColor: toneColor }]} />
+        <Text style={styles.toneText}>Thanh {tone}</Text>
+      </View>
+      
+      <Text style={styles.hanzi}>{hanzi}</Text>
+      <Text style={styles.pinyin}>{pinyin}</Text>
+      
+      <View style={styles.translations}>
+        <Text style={styles.english}>{english}</Text>
+        <Text style={styles.vietnamese}>{vietnamese}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.neutral[50],
+    borderRadius: Layout.isMobile ? 12 : 16,
+    padding: getResponsiveSpacing('lg'),
+    marginBottom: getResponsiveSpacing('md'),
+    width: Layout.isTablet ? '48%' : '100%',
+    minHeight: Layout.isMobile ? 150 : 180,
+    shadowColor: colors.neutral[900],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  toneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: getResponsiveSpacing('sm'),
+  },
+  toneIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: getResponsiveSpacing('xs'),
+  },
+  toneText: {
+    fontSize: getResponsiveFontSize('xs'),
+    color: colors.neutral[600],
+  },
+  hanzi: {
+    fontSize: getResponsiveFontSize('5xl'),
+    fontFamily: 'System',
+    color: colors.neutral[900],
+    textAlign: 'center',
+    marginBottom: getResponsiveSpacing('sm'),
+  },
+  pinyin: {
+    fontSize: getResponsiveFontSize('lg'),
+    color: colors.primary[600],
+    textAlign: 'center',
+    marginBottom: getResponsiveSpacing('md'),
+    fontStyle: 'italic',
+  },
+  translations: {
+    gap: getResponsiveSpacing('xs'),
+  },
+  english: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[700],
+    textAlign: 'center',
+  },
+  vietnamese: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[600],
+    textAlign: 'center',
+    fontWeight: typography.weights.medium,
+  },
+});
+```
+
+### 🎵 Tone Practice Component
+```tsx
+// ✅ Tone practice with responsive audio controls
+const TonePracticeCard: React.FC<TonePracticeProps> = ({ character, tone, onAnswer }) => {
+  return (
+    <View style={styles.practiceCard}>
+      <Text style={styles.practiceCharacter}>{character}</Text>
+      
+      <View style={styles.toneOptions}>
+        {[1, 2, 3, 4].map((toneOption) => (
+          <TouchableOpacity
+            key={toneOption}
+            style={[
+              styles.toneButton,
+              { backgroundColor: colors.tones[`tone${toneOption}`] }
+            ]}
+            onPress={() => onAnswer(toneOption)}
+          >
+            <Text style={styles.toneButtonText}>Thanh {toneOption}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  practiceCard: {
+    backgroundColor: colors.neutral[50],
+    borderRadius: Layout.isMobile ? 16 : 20,
+    padding: getResponsiveSpacing('xl'),
+    alignItems: 'center',
+  },
+  practiceCharacter: {
+    fontSize: getResponsiveFontSize('7xl'),
+    fontFamily: 'System',
+    color: colors.neutral[900],
+    marginBottom: getResponsiveSpacing('xl'),
+  },
+  toneOptions: {
+    flexDirection: Layout.isMobile ? 'column' : 'row',
+    gap: getResponsiveSpacing('md'),
+    width: '100%',
+  },
+  toneButton: {
+    flex: Layout.isMobile ? 0 : 1,
+    paddingVertical: getResponsiveSpacing('md'),
+    paddingHorizontal: getResponsiveSpacing('lg'),
+    borderRadius: Layout.isMobile ? 8 : 12,
+    minHeight: 44, // Minimum touch target
+  },
+  toneButtonText: {
+    fontSize: getResponsiveFontSize('base'),
+    fontWeight: typography.weights.medium,
+    color: colors.neutral[50],
+    textAlign: 'center',
+  },
+});
+```
+
+---
+
+## 📱 Device-Specific Optimizations
+
+### 📐 Mobile-First Approach (375px - 767px)
+```tsx
+// Mobile optimizations for Chinese learning
+const mobileStyles = StyleSheet.create({
+  // Large touch targets for mobile
+  touchableArea: {
+    minHeight: 44,
+    minWidth: 44,
+  },
+  
+  // Single column layout
+  lessonList: {
+    flexDirection: 'column',
+    gap: getResponsiveSpacing('md'),
+  },
+  
+  // Full-width cards
+  lessonCard: {
+    width: '100%',
+    marginHorizontal: 0,
+  },
+  
+  // Compact navigation
+  tabBar: {
+    height: 60,
+    paddingBottom: 8,
+  },
+  
+  // Readable Chinese text on small screens
+  chineseText: {
+    fontSize: getResponsiveFontSize('4xl'),
+    lineHeight: typography.lineHeights.relaxed,
+  },
+});
+```
+
+### 📱 Tablet Optimizations (768px - 1023px)
+```tsx
+// Tablet optimizations for Chinese learning
+const tabletStyles = StyleSheet.create({
+  // Two-column layout
+  lessonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: getResponsiveSpacing('lg'),
+  },
+  
+  // 48% width cards (2 per row)
+  lessonCard: {
+    width: '48%',
+    aspectRatio: 1.2,
+  },
+  
+  // Side navigation possible
+  sideNav: {
+    width: 200,
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    height: '100%',
+  },
+  
+  // Larger Chinese characters
+  chineseText: {
+    fontSize: getResponsiveFontSize('6xl'),
+  },
+  
+  // Horizontal tone selector
+  toneSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+});
+```
+
+### 🖥️ Desktop Optimizations (1024px+)
+```tsx
+// Desktop optimizations for Chinese learning
+const desktopStyles = StyleSheet.create({
+  // Three-column layout
+  lessonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: getResponsiveSpacing('xl'),
+  },
+  
+  // 32% width cards (3 per row)
+  lessonCard: {
+    width: '32%',
+    aspectRatio: 1.1,
+  },
+  
+  // Sidebar navigation
+  sideNav: {
+    width: 250,
+    borderRightWidth: 1,
+    borderRightColor: colors.neutral[200],
+  },
+  
+  // Extra large Chinese characters
+  chineseText: {
+    fontSize: getResponsiveFontSize('7xl'),
+  },
+  
+  // Hover effects
+  interactiveCard: {
+    '&:hover': {
+      backgroundColor: colors.neutral[100],
+      transform: [{ scale: 1.02 }],
+    },
+  },
+});
+```
+
+---
+
+## 🌐 Vietnamese Localization System
+
+### 🔤 Translation Structure
+```tsx
+// Vietnamese translations (primary language)
+export const vi = {
+  common: {
+    loading: 'Đang tải...',
+    save: 'Lưu',
+    cancel: 'Hủy',
+    continue: 'Tiếp tục',
+    retry: 'Thử lại',
+  },
+  
+  home: {
+    welcome: 'Chào mừng đến với học tiếng Trung',
+    dailyGoal: 'Mục tiêu hàng ngày',
+    streak: '{{count}} ngày liên tiếp',
+    continueLesson: 'Tiếp tục bài học',
+  },
+  
+  lessons: {
+    vocabulary: 'Từ vựng',
+    grammar: 'Ngữ pháp',
+    pronunciation: 'Phát âm',
+    writing: 'Viết chữ',
+    practice: 'Luyện tập',
+    quiz: 'Kiểm tra',
+  },
+  
+  tones: {
+    tone1: 'Thanh ngang',
+    tone2: 'Thanh sắc', 
+    tone3: 'Thanh huyền',
+    tone4: 'Thanh nặng',
+    neutral: 'Thanh nhẹ',
+  },
+  
+  feedback: {
+    correct: 'Chính xác!',
+    incorrect: 'Sai rồi, thử lại!',
+    wellDone: 'Làm tốt lắm!',
+    keepPracticing: 'Tiếp tục luyện tập!',
+  },
+} as const;
+```
+
+### 🌍 Usage Pattern
+```tsx
+// ✅ Standard localization usage
+import { useTranslation } from '../hooks/useTranslation';
+
+const Component = () => {
+  const { t } = useTranslation();
+  
+  return (
+    <View>
+      <Text>{t.home.welcome}</Text>
+      <Text>{t.lessons.vocabulary}</Text>
+      <Text>{t.tones.tone1}</Text>
+    </View>
+  );
+};
+```
+
+---
+
+## 🔧 Code Quality Rules
+
+### 📝 Chinese Learning App Standards
+```tsx
+// ✅ Component naming for Chinese app
+export const VocabularyCard = () => {};     // Vocabulary components
+export const TonePractice = () => {};       // Tone components  
+export const StrokeOrder = () => {};        // Writing components
+export const HSKLesson = () => {};          // HSK level components
+
+// ✅ Hook naming
+export const useVocabulary = () => {};      // Vocabulary management
+export const useTonePractice = () => {};    // Tone practice logic
+export const useProgress = () => {};        // Learning progress
+export const useAudio = () => {};           // Audio playback
+```
+
+### 🧪 Testing for Chinese Learning Features
+```bash
+# ✅ Test different devices and orientations
+1. Test on iPhone (375px) - Portrait
+2. Test on iPad (768px) - Portrait & Landscape
+3. Test tone recognition accuracy
+4. Test character display clarity
+5. Test audio playback functionality
+6. Test offline capability
+7. Check Vietnamese translations
+```
+
+### 🎯 Performance for Learning App
+```tsx
+// ✅ Optimize for Chinese character rendering
+const OptimizedCharacter = React.memo(({ character }: { character: string }) => (
+  <Text style={styles.hanzi}>{character}</Text>
+));
+
+// ✅ Lazy load lessons
+const LazyLesson = React.lazy(() => import('./LessonComponent'));
+
+// ✅ Cache audio files
+const audioCache = new Map<string, Audio>();
+```
+
+---
+
+## 🚨 Development Enforcement
+
+### ✅ Pre-Development Checklist
+- [ ] Kill previous processes (`pkill -f expo`)
+- [ ] Plan responsive behavior for all devices
+- [ ] Plan Vietnamese translations
+- [ ] Consider tone display and audio
+- [ ] Check Chinese font rendering
+- [ ] Plan offline functionality
+
+### 📋 Code Review Checklist
+- [ ] Uses responsive spacing/fonts (no hardcoded values)
+- [ ] Uses Vietnamese translations (no hardcoded strings)
+- [ ] Chinese characters display correctly on all devices
+- [ ] Tone colors are consistent with design system
+- [ ] Touch targets are minimum 44px on mobile
+- [ ] Audio components handle loading/error states
+- [ ] Proper TypeScript interfaces for learning data
+- [ ] Accessibility props for Vietnamese screen readers
+
+---
+
+## 🎯 Success Metrics
+
+### ✅ Quality Gates for Chinese Learning App
+- **Responsive**: Works perfectly on 375px, 768px, and 1024px+
+- **Localized**: All Vietnamese text through translation system
+- **Educational**: Clear Chinese character display on all devices
+- **Interactive**: Responsive tone practice and audio feedback  
+- **Performant**: Smooth scrolling with large character lists
+- **Accessible**: VoiceOver/TalkBack support for Vietnamese users
+- **Offline**: Core lessons work without internet
+- **Progressive**: Adapts to user's learning level
+
+### 📈 Device-Specific Success Criteria
+- **Mobile**: One-handed usage, clear Chinese text, touch-friendly
+- **Tablet**: Two-column layouts, landscape mode support
+- **Desktop**: Three-column layouts, keyboard shortcuts, hover states
+
+**Remember: Vietnamese-first approach with responsive Chinese character display is essential for user success.**
