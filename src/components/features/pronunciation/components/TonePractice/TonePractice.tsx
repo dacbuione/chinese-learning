@@ -6,6 +6,8 @@ import { Button } from '../../../../ui/atoms/Button';
 import { colors, Layout, getResponsiveSpacing } from '../../../../../theme';
 import { ToneExample, TonePracticeProps } from '../../types/pronunciation.types';
 import { Volume2, Check, X, RefreshCw, Headphones } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useVocabularyTTS } from '../../../../../hooks/useTTS';
 
 export const TonePractice: React.FC<TonePracticeProps> = ({
   examples,
@@ -16,15 +18,23 @@ export const TonePractice: React.FC<TonePracticeProps> = ({
   variant = 'default',
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [totalQuestions, setTotalQuestions] = useState(examples.length);
   const [selectedTone, setSelectedTone] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
-  const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(timeLimit);
-  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number | undefined>(timeLimit);
+  const [isTimerActive, setIsTimerActive] = useState(Boolean(timeLimit));
+
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    speakVocabulary,
+    stop: stopTTS,
+  } = useVocabularyTTS();
 
   const currentExample = examples[currentIndex];
-  const totalQuestions = examples.length;
 
   // Tone configuration with Vietnamese descriptions
   const toneInfo = [
@@ -143,9 +153,20 @@ export const TonePractice: React.FC<TonePracticeProps> = ({
     setIsTimerActive(Boolean(timeLimit));
   };
 
-  const playAudio = () => {
-    // Audio playback implementation
-    console.log(`Playing audio for: ${currentExample.character}`);
+  const playAudio = async () => {
+    try {
+      if (isTTSPlaying) {
+        await stopTTS();
+      } else {
+        await speakVocabulary({
+          simplified: currentExample.character,
+          pinyin: currentExample.pinyin,
+          tone: currentExample.tone,
+        });
+      }
+    } catch (error) {
+      console.error('TonePractice audio error:', error);
+    }
   };
 
   const getPerformanceColor = (percentage: number) => {
@@ -168,8 +189,13 @@ export const TonePractice: React.FC<TonePracticeProps> = ({
         <ChineseText size="4xl" tone={currentExample.tone}>
           {currentExample.character}
         </ChineseText>
-        <Button variant="ghost" size="sm" onPress={playAudio}>
-          <Volume2 size={20} color={colors.primary[500]} />
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onPress={playAudio}
+          disabled={isTTSLoading}
+        >
+          <Volume2 size={20} color={isTTSPlaying ? colors.secondary[500] : colors.primary[500]} />
         </Button>
       </View>
       
@@ -297,10 +323,16 @@ export const TonePractice: React.FC<TonePracticeProps> = ({
           </ChineseText>
           
           <View style={styles.audioControls}>
-            <Button variant="primary" size="md" onPress={playAudio} style={styles.audioButton}>
+            <Button 
+              variant={isTTSPlaying ? "secondary" : "primary"} 
+              size="md" 
+              onPress={playAudio} 
+              style={styles.audioButton}
+              disabled={isTTSLoading}
+            >
               <Headphones size={24} color={colors.neutral[50]} />
               <TranslationText size="sm" color={colors.neutral[50]} weight="medium">
-                Nghe
+                {isTTSLoading ? 'Đang tải...' : isTTSPlaying ? 'Đang phát' : 'Nghe'}
               </TranslationText>
             </Button>
           </View>

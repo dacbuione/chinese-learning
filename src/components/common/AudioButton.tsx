@@ -156,7 +156,8 @@ export const PronunciationAudioButton: React.FC<{
   pinyin: string;
   tone: number;
   size?: 'small' | 'medium' | 'large';
-}> = ({ hanzi, pinyin, tone, size = 'large' }) => {
+  speed?: number;
+}> = ({ hanzi, pinyin, tone, size = 'large', speed = 0.8 }) => {
   const {
     isLoading,
     isPlaying,
@@ -167,13 +168,13 @@ export const PronunciationAudioButton: React.FC<{
 
   const handlePress = async () => {
     try {
-      console.log(`🎯 PronunciationAudioButton clicked: ${hanzi}`);
+      console.log(`🎯 PronunciationAudioButton clicked: ${hanzi} at ${speed}x`);
       if (isPlaying) {
         console.log('🛑 Stopping audio...');
         await stop();
       } else {
         console.log('▶️ Starting pronunciation...');
-        await speakForPractice(hanzi, 0.8); // Slower for practice
+        await speakForPractice(hanzi, speed); // Use provided speed
       }
     } catch (err) {
       console.error('❌ Pronunciation audio error:', err);
@@ -206,7 +207,7 @@ export const PronunciationAudioButton: React.FC<{
       onPress={handlePress}
       disabled={isLoading}
       activeOpacity={0.7}
-      accessibilityLabel={`Phát âm ${hanzi}`}
+      accessibilityLabel={`Phát âm ${hanzi} tốc độ ${speed}x`}
       accessibilityRole="button"
     >
       {isLoading ? (
@@ -230,12 +231,13 @@ export const InlineAudioButton: React.FC<{
   hanzi: string;
   pinyin: string;
   tone: number;
-}> = ({ hanzi, pinyin, tone }) => (
+  speed?: number;
+}> = ({ hanzi, pinyin, tone, speed = 1.0 }) => (
   <AudioButton
     hanzi={hanzi}
     pinyin={pinyin}
     tone={tone}
-    speed={1.0}
+    speed={speed}
     size="small"
     variant="minimal"
   />

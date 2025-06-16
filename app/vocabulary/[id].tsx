@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors, getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../src/theme';
+import { useVocabularyTTS } from '../../src/hooks/useTTS';
 
 const { width } = Dimensions.get('window');
 
@@ -175,6 +177,14 @@ export default function VocabularyDetail() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'info' | 'examples' | 'related'>('info');
 
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    speakVocabulary,
+    stop: stopTTS,
+  } = useVocabularyTTS();
+
   const vocabulary = id ? vocabularyData[id] : null;
 
   if (!vocabulary) {
@@ -218,6 +228,40 @@ export default function VocabularyDetail() {
     }
   };
 
+  const handlePlayAudio = async () => {
+    try {
+      if (isTTSPlaying) {
+        await stopTTS();
+      } else {
+        await speakVocabulary({
+          simplified: vocabulary.hanzi,
+          pinyin: vocabulary.pinyin,
+          tone: vocabulary.tone,
+        });
+      }
+    } catch (error) {
+      console.error('TTS Error:', error);
+      Alert.alert('Lỗi phát âm', 'Không thể phát âm từ vựng. Vui lòng thử lại.');
+    }
+  };
+
+  const handleExampleAudio = async (example: typeof vocabulary.examples[0]) => {
+    try {
+      if (isTTSPlaying) {
+        await stopTTS();
+      } else {
+        await speakVocabulary({
+          simplified: example.chinese,
+          pinyin: example.pinyin,
+          tone: 1, // Default tone for sentences
+        });
+      }
+    } catch (error) {
+      console.error('Example TTS Error:', error);
+      Alert.alert('Lỗi phát âm', 'Không thể phát âm ví dụ. Vui lòng thử lại.');
+    }
+  };
+
   const renderInfoTab = () => (
     <View style={styles.tabContent}>
       {/* Main Word Display */}
@@ -235,8 +279,20 @@ export default function VocabularyDetail() {
           <Text style={styles.vietnameseText}>{vocabulary.vietnamese}</Text>
         </View>
 
-        <TouchableOpacity style={styles.audioButton}>
-          <Text style={styles.audioButtonText}>🔊 Phát âm</Text>
+        <TouchableOpacity 
+          style={[
+            styles.audioButton,
+            isTTSPlaying && styles.audioButtonActive
+          ]} 
+          onPress={handlePlayAudio}
+          disabled={isTTSLoading}
+        >
+          <Text style={[
+            styles.audioButtonText,
+            isTTSPlaying && styles.audioButtonActiveText
+          ]}>
+            {isTTSPlaying ? '⏸️ Đang phát' : '🔊 Phát âm'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -289,7 +345,7 @@ export default function VocabularyDetail() {
         <View key={index} style={styles.exampleCard}>
           <View style={styles.exampleHeader}>
             <Text style={styles.exampleNumber}>Ví dụ {index + 1}</Text>
-            <TouchableOpacity style={styles.exampleAudio}>
+            <TouchableOpacity style={styles.exampleAudio} onPress={() => handleExampleAudio(example)}>
               <Text style={styles.exampleAudioText}>🔊</Text>
             </TouchableOpacity>
           </View>
@@ -496,10 +552,16 @@ const styles = StyleSheet.create({
     paddingVertical: getResponsiveSpacing('md'),
     borderRadius: 8,
   },
+  audioButtonActive: {
+    backgroundColor: colors.accent[500],
+  },
   audioButtonText: {
     fontSize: getResponsiveFontSize('base'),
     color: colors.neutral[50],
     fontWeight: '500',
+  },
+  audioButtonActiveText: {
+    color: colors.neutral[50],
   },
   infoCard: {
     backgroundColor: colors.neutral[50],

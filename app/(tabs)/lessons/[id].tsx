@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors, getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../../src/theme';
+import { useVocabularyTTS } from '../../../src/hooks/useTTS';
 
 const { width } = Dimensions.get('window');
 
@@ -108,7 +110,15 @@ export default function LessonDetail() {
   const [activeTab, setActiveTab] = useState<'vocabulary' | 'grammar' | 'practice'>('vocabulary');
   const [selectedVocab, setSelectedVocab] = useState<string | null>(null);
 
-  const lesson = lessonData[id as string];
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    speakVocabulary,
+    stop: stopTTS,
+  } = useVocabularyTTS();
+
+  const lesson = id ? lessonData[id] : null;
 
   if (!lesson) {
     return (
@@ -126,11 +136,28 @@ export default function LessonDetail() {
   const getToneColor = (tone: number) => {
     const toneColors = {
       1: colors.error[500],    // Thanh ngang - đỏ
-      2: colors.warning[500],  // Thanh sắc - vàng  
-             3: colors.accent[500],  // Thanh huyền - xanh lá
+      2: colors.warning[500],  // Thanh sắc - vàng
+      3: colors.accent[500],   // Thanh huyền - xanh lá
       4: colors.primary[500],  // Thanh nặng - xanh dương
     };
     return toneColors[tone as keyof typeof toneColors] || colors.neutral[500];
+  };
+
+  const handleVocabAudio = async (item: VocabularyItem) => {
+    try {
+      if (isTTSPlaying) {
+        await stopTTS();
+      } else {
+        await speakVocabulary({
+          simplified: item.hanzi,
+          pinyin: item.pinyin,
+          tone: item.tone,
+        });
+      }
+    } catch (error) {
+      console.error('Vocabulary TTS Error:', error);
+      Alert.alert('Lỗi phát âm', 'Không thể phát âm từ vựng. Vui lòng thử lại.');
+    }
   };
 
   const renderVocabularyTab = () => (
@@ -153,7 +180,7 @@ export default function LessonDetail() {
               <View style={[styles.toneIndicator, { backgroundColor: getToneColor(item.tone) }]} />
               <Text style={styles.toneText}>Thanh {item.tone}</Text>
             </View>
-            <TouchableOpacity style={styles.audioButton}>
+            <TouchableOpacity style={styles.audioButton} onPress={() => handleVocabAudio(item)}>
               <Text style={styles.audioButtonText}>🔊</Text>
             </TouchableOpacity>
           </View>

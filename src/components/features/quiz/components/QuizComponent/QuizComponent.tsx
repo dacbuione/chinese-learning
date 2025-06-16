@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Card } from '../../../../ui/atoms/Card';
 import { ChineseText, PinyinText, TranslationText } from '../../../../ui/atoms/Text';
@@ -6,7 +6,8 @@ import { Button } from '../../../../ui/atoms/Button';
 import { ProgressBar } from '../../../../ui/molecules/ProgressBar';
 import { colors, Layout, getResponsiveSpacing } from '../../../../../theme';
 import { QuizComponentProps, QuizQuestion, QuizResult } from '../../types/quiz.types';
-import { Check, X, SkipForward, Volume2, Timer, Award } from 'lucide-react-native';
+import { Check, X, SkipForward, Volume2, Timer, Award, ChevronRight } from 'lucide-react-native';
+import { useVocabularyTTS } from '../../../../../hooks/useTTS';
 
 export const QuizComponent: React.FC<QuizComponentProps> = ({
   questions,
@@ -23,17 +24,25 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
   difficulty = 'intermediate',
 }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [shuffledQuestions, setShuffledQuestions] = useState<QuizQuestion[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(timeLimit);
-  const [isTimerActive, setIsTimerActive] = useState(false);
-  const [processedQuestions, setProcessedQuestions] = useState<QuizQuestion[]>([]);
+  const [timeLeft, setTimeLeft] = useState<number | undefined>(timeLimit);
+  const [isTimerActive, setIsTimerActive] = useState(Boolean(timeLimit));
 
-  const currentQuestion = processedQuestions[currentQuestionIndex];
-  const totalQuestions = processedQuestions.length;
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    speakVocabulary,
+    stop: stopTTS,
+  } = useVocabularyTTS();
+
+  const currentQuestion = shuffledQuestions[currentQuestionIndex];
+  const totalQuestions = shuffledQuestions.length;
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
 
   // Process questions on mount
@@ -51,7 +60,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
       }));
     }
     
-    setProcessedQuestions(processed);
+    setShuffledQuestions(processed);
   }, [questions, shuffleQuestions, shuffleAnswers]);
 
   // Timer effect
@@ -147,7 +156,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
   const finishQuiz = () => {
     setShowResult(true);
     
-    const quizResults: QuizResult[] = processedQuestions.map((question, index) => ({
+    const quizResults: QuizResult[] = shuffledQuestions.map((question, index) => ({
       question,
       userAnswer: userAnswers[index] || '',
       correctAnswer: question.correctAnswer,
@@ -172,9 +181,20 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
     setIsTimerActive(Boolean(timeLimit));
   };
 
-  const playAudio = () => {
-    if (currentQuestion.audioUrl) {
-      console.log(`Playing audio: ${currentQuestion.audioUrl}`);
+  const playAudio = async () => {
+    try {
+      if (isTTSPlaying) {
+        await stopTTS();
+      } else if (currentQuestion.question) {
+        // Try to speak the question content
+        await speakVocabulary({
+          simplified: currentQuestion.question,
+          pinyin: '', // QuizQuestion doesn't have pinyin field
+          tone: currentQuestion.tone || 1,
+        });
+      }
+    } catch (error) {
+      console.error('Quiz audio error:', error);
     }
   };
 
@@ -355,11 +375,14 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
              'Chọn đáp án đúng:'}
           </TranslationText>
           
-          {currentQuestion.audioUrl && (
-            <Button variant="ghost" size="sm" onPress={playAudio}>
-              <Volume2 size={20} color={colors.primary[500]} />
-            </Button>
-          )}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onPress={playAudio}
+            disabled={isTTSLoading}
+          >
+            <Volume2 size={20} color={isTTSPlaying ? colors.secondary[500] : colors.primary[500]} />
+          </Button>
         </View>
         
         <View style={styles.questionContent}>

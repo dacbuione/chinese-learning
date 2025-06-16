@@ -6,6 +6,7 @@ import { Button } from '../../../../ui/atoms/Button';
 import { colors, Layout, getResponsiveSpacing } from '../../../../../theme';
 import { VocabularyItem } from '../../types/vocabulary.types';
 import { Volume2, Heart, BookOpen } from 'lucide-react-native';
+import { useVocabularyTTS } from '../../../../../hooks/useTTS';
 
 interface VocabularyCardProps {
   vocabulary: VocabularyItem;
@@ -34,6 +35,14 @@ export const VocabularyCard: React.FC<VocabularyCardProps> = ({
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showStrokeOrder, setShowStrokeOrder] = useState(false);
+
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    speakVocabulary,
+    stop: stopTTS,
+  } = useVocabularyTTS();
 
   const getToneColor = (tone: number) => {
     const toneColors = {
@@ -74,7 +83,22 @@ export const VocabularyCard: React.FC<VocabularyCardProps> = ({
     }
   };
 
-  const handleAudioPress = () => {
+  const handleAudioPress = async () => {
+    try {
+      if (isTTSPlaying) {
+        await stopTTS();
+      } else {
+        await speakVocabulary({
+          simplified: vocabulary.hanzi,
+          pinyin: vocabulary.pinyin,
+          tone: vocabulary.tone,
+        });
+      }
+    } catch (error) {
+      console.error('VocabularyCard TTS Error:', error);
+    }
+    
+    // Fallback to original audio URL if available
     if (vocabulary.audioUrl && onAudioPress) {
       onAudioPress(vocabulary.audioUrl);
     }

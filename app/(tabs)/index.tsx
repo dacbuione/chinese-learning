@@ -1,25 +1,131 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Modal,
+  Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 
 // Import components and theme
-import { colors, getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../src/theme';
+import {
+  colors,
+  getResponsiveSpacing,
+  getResponsiveFontSize,
+  Layout,
+} from '../../src/theme';
 import { useTranslation } from '../../src/localization';
-import { Card } from '../../src/components/ui/atoms/Card'; 
+import { Card } from '../../src/components/ui/atoms/Card';
 import { ProgressBar } from '../../src/components/ui/molecules/ProgressBar';
 import { Button } from '../../src/components/ui/atoms/Button';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { t, practice } = useTranslation();
+
+  // Silent mode detection state
+  const [showSilentModeModal, setShowSilentModeModal] = useState(false);
+  const [isCheckingSilentMode, setIsCheckingSilentMode] = useState(true);
+
+  // Check silent mode on app launch
+  useEffect(() => {
+    checkSilentMode();
+  }, []);
+
+  const checkSilentMode = async () => {
+    if (Platform.OS !== 'ios') {
+      setIsCheckingSilentMode(false);
+      return;
+    }
+
+    try {
+      setIsCheckingSilentMode(true);
+
+      // Configure audio for testing
+      await Audio.setIsEnabledAsync(true);
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+        playsInSilentModeIOS: false, // Don't override silent mode for detection
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      // Test with a very short silent audio to detect silent mode
+      let audioDetected = false;
+      const testSound = await Audio.Sound.createAsync(
+        {
+          uri: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWXA==',
+        },
+        {
+          shouldPlay: true,
+          volume: 1.0,
+          isLooping: false,
+        }
+      );
+
+      // Listen for audio completion to detect if sound played
+      testSound.sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          audioDetected = true;
+        }
+      });
+
+      // Wait for audio test to complete
+      setTimeout(async () => {
+        await testSound.sound.unloadAsync();
+
+        if (!audioDetected) {
+          // Silent mode is likely ON - show modal
+          setShowSilentModeModal(true);
+        }
+
+        setIsCheckingSilentMode(false);
+      }, 1000);
+    } catch (error) {
+      console.warn('🔇 Silent mode detection failed:', error);
+      setIsCheckingSilentMode(false);
+    }
+  };
+
+  const handleSilentModeCheck = async () => {
+    try {
+      // Test audio again to see if silent mode is turned off
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+        playsInSilentModeIOS: false, // Test without override
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      // Test with audible beep
+      const testSound = await Audio.Sound.createAsync(
+        { uri: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav' },
+        {
+          shouldPlay: true,
+          volume: 0.01,
+        }
+      );
+
+      setTimeout(async () => {
+        await testSound.sound.unloadAsync();
+      }, 2000);
+    } catch (error) {
+      console.error('🔇 Audio test failed:', error);
+      Alert.alert(
+        '❌ Lỗi kiểm tra âm thanh',
+        'Không thể kiểm tra âm thanh. Vui lòng đảm bảo:\n\n1. Tắt chế độ im lặng\n2. Bật âm lượng\n3. Khởi động lại ứng dụng'
+      );
+    }
+  };
 
   // Mock user data - in real app this would come from Redux/API
   const userStats = {
@@ -32,7 +138,8 @@ export default function HomeScreen() {
     accuracy: 87,
   };
 
-  const dailyProgress = (userStats.completedLessons / userStats.dailyGoal) * 100;
+  const dailyProgress =
+    (userStats.completedLessons / userStats.dailyGoal) * 100;
 
   const quickActions = [
     {
@@ -44,7 +151,7 @@ export default function HomeScreen() {
       route: '/practice/vocabulary',
     },
     {
-      id: 'pronunciation', 
+      id: 'pronunciation',
       title: t('practice.pronunciation'),
       icon: 'mic-outline' as const,
       color: colors.secondary[600],
@@ -106,7 +213,114 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+      {/* Silent Mode Modal */}
+      <Modal
+        visible={showSilentModeModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {}} // Prevent dismissal
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons
+                name="volume-mute"
+                size={64}
+                color={colors.warning[500]}
+              />
+              <Text style={styles.modalTitle}>🔇 Chế độ im lặng đang bật</Text>
+              <Text style={styles.modalSubtitle}>
+                Để học tiếng Trung hiệu quả, bạn cần nghe rõ phát âm
+              </Text>
+            </View>
+
+            <View style={styles.instructionsContainer}>
+              <Text style={styles.instructionsTitle}>
+                Cách tắt chế độ im lặng:
+              </Text>
+
+              <View style={styles.instruction}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>1</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={styles.stepTitle}>Gạt công tắc bên cạnh</Text>
+                  <Text style={styles.stepDescription}>
+                    Gạt công tắc bên trái iPhone về phía màn hình
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.instruction}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>2</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={styles.stepTitle}>
+                    Kiểm tra không có màu cam
+                  </Text>
+                  <Text style={styles.stepDescription}>
+                    Đảm bảo không thấy màu cam trong khe công tắc
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.instruction}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>3</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={styles.stepTitle}>Bật âm lượng</Text>
+                  <Text style={styles.stepDescription}>
+                    Bấm nút tăng âm lượng để đảm bảo nghe rõ
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <Button
+                variant="primary"
+                size="lg"
+                onPress={handleSilentModeCheck}
+                style={styles.testButton}
+              >
+                <Ionicons
+                  name="checkmark"
+                  size={20}
+                  color={colors.neutral[50]}
+                />
+                Tôi đã tắt chế độ im lặng
+              </Button>
+
+              <TouchableOpacity
+                style={styles.skipButton}
+                onPress={() => {
+                  Alert.alert(
+                    '⚠️ Bỏ qua cảnh báo',
+                    'Bạn có thể sẽ không nghe được âm thanh học tập. Bạn có chắc muốn tiếp tục?',
+                    [
+                      { text: 'Quay lại', style: 'cancel' },
+                      {
+                        text: 'Tiếp tục',
+                        style: 'destructive',
+                        onPress: () => setShowSilentModeModal(false),
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Text style={styles.skipButtonText}>Bỏ qua cảnh báo</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+      >
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <View style={styles.welcomeContent}>
@@ -129,7 +343,7 @@ export default function HomeScreen() {
               {userStats.completedLessons}/{userStats.dailyGoal} bài học
             </Text>
           </View>
-          
+
           <ProgressBar
             variant="default"
             progress={dailyProgress / 100}
@@ -140,7 +354,7 @@ export default function HomeScreen() {
             animated={true}
             style={styles.progressBar}
           />
-          
+
           <Text style={styles.progressPercentage}>
             {Math.round(dailyProgress)}% hoàn thành
           </Text>
@@ -155,24 +369,25 @@ export default function HomeScreen() {
                 key={action.id}
                 style={[
                   styles.quickActionCard,
-                  { backgroundColor: action.backgroundColor }
+                  { backgroundColor: action.backgroundColor },
                 ]}
                 onPress={() => router.push(action.route as any)}
               >
-                <View style={[
-                  styles.quickActionIcon,
-                  { backgroundColor: action.color }
-                ]}>
-                  <Ionicons 
-                    name={action.icon} 
-                    size={24} 
-                    color={colors.neutral[50]} 
+                <View
+                  style={[
+                    styles.quickActionIcon,
+                    { backgroundColor: action.color },
+                  ]}
+                >
+                  <Ionicons
+                    name={action.icon}
+                    size={24}
+                    color={colors.neutral[50]}
                   />
                 </View>
-                <Text style={[
-                  styles.quickActionTitle,
-                  { color: action.color }
-                ]}>
+                <Text
+                  style={[styles.quickActionTitle, { color: action.color }]}
+                >
                   {action.title}
                 </Text>
               </TouchableOpacity>
@@ -187,11 +402,7 @@ export default function HomeScreen() {
             {todayStats.map((stat) => (
               <Card key={stat.id} variant="default" style={styles.statCard}>
                 <View style={styles.statIconContainer}>
-                  <Ionicons 
-                    name={stat.icon} 
-                    size={24} 
-                    color={stat.color} 
-                  />
+                  <Ionicons name={stat.icon} size={24} color={stat.color} />
                 </View>
                 <Text style={styles.statValue}>
                   {stat.value} {stat.unit}
@@ -362,4 +573,102 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: getResponsiveSpacing('xl'),
   },
-}); 
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: getResponsiveSpacing('lg'),
+  },
+  loadingText: {
+    fontSize: getResponsiveFontSize('lg'),
+    color: colors.neutral[600],
+    textAlign: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.neutral[50],
+  },
+  modalContent: {
+    flex: 1,
+    padding: getResponsiveSpacing('xl'),
+    justifyContent: 'space-between',
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: getResponsiveSpacing('xl'),
+  },
+  modalTitle: {
+    fontSize: getResponsiveFontSize('2xl'),
+    fontWeight: 'bold',
+    color: colors.neutral[900],
+    textAlign: 'center',
+    marginTop: getResponsiveSpacing('lg'),
+    marginBottom: getResponsiveSpacing('md'),
+  },
+  modalSubtitle: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[600],
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  instructionsContainer: {
+    flex: 1,
+    marginTop: getResponsiveSpacing('xl'),
+  },
+  instructionsTitle: {
+    fontSize: getResponsiveFontSize('lg'),
+    fontWeight: '600',
+    color: colors.neutral[900],
+    marginBottom: getResponsiveSpacing('lg'),
+  },
+  instruction: {
+    flexDirection: 'row',
+    marginBottom: getResponsiveSpacing('lg'),
+    gap: getResponsiveSpacing('md'),
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary[500],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNumberText: {
+    fontSize: getResponsiveFontSize('base'),
+    fontWeight: 'bold',
+    color: colors.neutral[50],
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: getResponsiveFontSize('base'),
+    fontWeight: '600',
+    color: colors.neutral[900],
+    marginBottom: getResponsiveSpacing('xs'),
+  },
+  stepDescription: {
+    fontSize: getResponsiveFontSize('sm'),
+    color: colors.neutral[600],
+    lineHeight: 20,
+  },
+  modalButtons: {
+    gap: getResponsiveSpacing('md'),
+    marginTop: getResponsiveSpacing('xl'),
+  },
+  testButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: getResponsiveSpacing('sm'),
+  },
+  skipButton: {
+    paddingVertical: getResponsiveSpacing('md'),
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[500],
+    textDecorationLine: 'underline',
+  },
+});

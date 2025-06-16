@@ -4,6 +4,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence } 
 
 // Import theme
 import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '../../../../theme';
+import { useLessonTTS } from '../../../../hooks/useTTS';
 
 // Simple AudioPlayer Props
 interface SimpleAudioPlayerProps {
@@ -16,6 +17,8 @@ interface SimpleAudioPlayerProps {
   showTime?: boolean;
   autoPlay?: boolean;
   containerStyle?: any;
+  chineseText?: string;  // Text to speak in Chinese
+  speed?: number;       // Playback speed
   onPlay?: () => void;
   onPause?: () => void;
   onEnd?: () => void;
@@ -41,6 +44,8 @@ export const AudioPlayer: React.FC<SimpleAudioPlayerProps> = ({
   showTime = true,
   autoPlay = false,
   containerStyle,
+  chineseText,
+  speed,
   onPlay,
   onPause,
   onEnd,
@@ -49,6 +54,14 @@ export const AudioPlayer: React.FC<SimpleAudioPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration] = useState(30); // Mock duration
+
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    speakLessonContent,
+    stop: stopTTS,
+  } = useLessonTTS();
 
   // Animation values
   const playButtonScale = useSharedValue(1);
@@ -77,25 +90,47 @@ export const AudioPlayer: React.FC<SimpleAudioPlayerProps> = ({
   }[size];
 
   // Handle play/pause
-  const handlePlayPause = useCallback(() => {
-    const newPlayingState = !isPlaying;
-    setIsPlaying(newPlayingState);
+  const handlePlayPause = useCallback(async () => {
+    try {
+      // Use actual TTS state
+      const actualPlaying = isTTSPlaying || isPlaying;
+      
+      if (actualPlaying) {
+        // Stop TTS if playing
+        if (isTTSPlaying) {
+          await stopTTS();
+        }
+        setIsPlaying(false);
+        onPause?.();
+      } else {
+        // Start TTS if Chinese text provided
+        if (chineseText) {
+          await speakLessonContent({
+            chinese: chineseText,
+            speed: speed || 1.0,
+          });
+        }
+        setIsPlaying(true);
+        onPlay?.();
+      }
 
-    // Animate button
-    playButtonScale.value = withSequence(
-      withTiming(0.9, { duration: 100 }),
-      withTiming(1, { duration: 100 })
-    );
+      // Animate button
+      playButtonScale.value = withSequence(
+        withTiming(0.9, { duration: 100 }),
+        withTiming(1, { duration: 100 })
+      );
 
-    // Update progress animation
-    if (newPlayingState) {
-      progressWidth.value = withTiming(1, { duration: (duration - currentTime) * 1000 });
-      onPlay?.();
-    } else {
-      progressWidth.value = currentTime / duration;
-      onPause?.();
+      // Update progress animation
+      if (!actualPlaying) {
+        progressWidth.value = withTiming(1, { duration: (duration - currentTime) * 1000 });
+      } else {
+        progressWidth.value = currentTime / duration;
+      }
+    } catch (error) {
+      console.error('AudioPlayer TTS Error:', error);
+      setIsPlaying(false);
     }
-  }, [isPlaying, currentTime, duration, playButtonScale, progressWidth, onPlay, onPause]);
+  }, [isPlaying, isTTSPlaying, currentTime, duration, playButtonScale, progressWidth, onPlay, onPause, chineseText, speakLessonContent, stopTTS, speed]);
 
   // Animated styles
   const playButtonAnimatedStyle = useAnimatedStyle(() => {
@@ -127,7 +162,7 @@ export const AudioPlayer: React.FC<SimpleAudioPlayerProps> = ({
               <Animated.View style={playButtonAnimatedStyle}>
                 <TouchableOpacity style={[styles.playButton, { width: sizeConfig.iconSize * 2, height: sizeConfig.iconSize * 2 }]} onPress={handlePlayPause}>
                   <Text style={[styles.playIcon, { fontSize: sizeConfig.iconSize }]}>
-                    {isPlaying ? '⏸️' : '▶️'}
+                    {(isPlaying || isTTSPlaying) ? '⏸️' : '▶️'}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -153,7 +188,7 @@ export const AudioPlayer: React.FC<SimpleAudioPlayerProps> = ({
               <Animated.View style={playButtonAnimatedStyle}>
                 <TouchableOpacity style={[styles.pronunciationPlayButton, { width: sizeConfig.iconSize * 3, height: sizeConfig.iconSize * 3 }]} onPress={handlePlayPause}>
                   <Text style={[styles.playIcon, { fontSize: sizeConfig.iconSize * 1.5 }]}>
-                    {isPlaying ? '⏸️' : '🔊'}
+                    {(isPlaying || isTTSPlaying) ? '⏸️' : '🔊'}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -175,7 +210,7 @@ export const AudioPlayer: React.FC<SimpleAudioPlayerProps> = ({
                 <Animated.View style={playButtonAnimatedStyle}>
                   <TouchableOpacity style={[styles.playButton, { width: sizeConfig.iconSize * 2.5, height: sizeConfig.iconSize * 2.5 }]} onPress={handlePlayPause}>
                     <Text style={[styles.playIcon, { fontSize: sizeConfig.iconSize }]}>
-                      {isPlaying ? '⏸️' : '▶️'}
+                      {(isPlaying || isTTSPlaying) ? '⏸️' : '▶️'}
                     </Text>
                   </TouchableOpacity>
                 </Animated.View>

@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Animated,
   Vibration,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
@@ -20,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 // Theme and utils
 import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '../../theme';
 import { useTranslation } from '../../localization';
+import { useVocabularyTTS } from '../../hooks/useTTS';
 
 // Types
 import { ChineseWord, VocabularyProgress } from '../../services/vocabularyService';
@@ -55,6 +57,14 @@ export const VocabularyCard: React.FC<VocabularyCardProps> = ({
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [flipAnimation] = useState(new Animated.Value(0));
   const [sound, setSound] = useState<Audio.Sound | null>(null);
+
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    speakVocabulary,
+    stop: stopTTS,
+  } = useVocabularyTTS();
 
   // Auto-reveal for study mode
   useEffect(() => {
@@ -108,14 +118,12 @@ export const VocabularyCard: React.FC<VocabularyCardProps> = ({
       if (onPlayAudio) {
         onPlayAudio(word);
       } else {
-        // Use Expo Speech for TTS
-        const { expoTTSService } = await import('../../services/tts/ExpoTTSService');
-        await expoTTSService.synthesizeChinese(
-          word.simplified,
-          word.pinyin,
-          undefined, // No specific tone number available
-          1.0 // Normal speed
-        );
+                  // Use TTS hook
+          await speakVocabulary({
+            simplified: word.simplified,
+            pinyin: word.pinyin,
+            tone: 1, // Default tone
+          });
       }
       
       // Reset playing state after a delay

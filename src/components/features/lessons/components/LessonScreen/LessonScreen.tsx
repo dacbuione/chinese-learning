@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -19,6 +20,8 @@ import {
   Trophy,
   Play,
   Pause,
+  RotateCcw,
+  Clock,
 } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
@@ -26,6 +29,7 @@ import Animated, {
   withSpring,
   withSequence,
   withTiming,
+  runOnJS,
 } from 'react-native-reanimated';
 
 // Import UI components
@@ -36,6 +40,7 @@ import { AudioPlayer } from '../../../../ui/molecules/AudioPlayer';
 
 // Import services and types
 import { lessonService, Lesson, Exercise, ChineseCharacter } from '../../../../../services/LessonService';
+import { useVocabularyTTS } from '../../../../../hooks/useTTS';
 
 // Import theme
 import { colors } from '../../../../../theme/colors';
@@ -55,18 +60,27 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
   // State management
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [currentExercise, setCurrentExercise] = useState<Exercise | null>(null);
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [explanation, setExplanation] = useState('');
-  const [xpEarned, setXpEarned] = useState(0);
+  const [score, setScore] = useState(0);
+  const [totalAnswered, setTotalAnswered] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Animation values
   const cardScale = useSharedValue(1);
   const resultOpacity = useSharedValue(0);
   const progressValue = useSharedValue(0);
+
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    speakVocabulary,
+    stop: stopTTS,
+  } = useVocabularyTTS();
 
   useEffect(() => {
     loadLesson();
@@ -83,7 +97,7 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
     if (lessonData) {
       setLesson(lessonData);
       if (lessonData.exercises.length > 0) {
-        setCurrentExercise(lessonData.exercises[0]);
+        setCurrentExerciseIndex(0);
       }
     }
   };
@@ -101,13 +115,12 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
   };
 
   const handleSubmitAnswer = () => {
-    if (!currentExercise || selectedAnswer === null) return;
+    if (!lesson || !lesson.exercises[currentExerciseIndex]) return;
 
-    const result = lessonService.checkAnswer(currentExercise.id, selectedAnswer);
+    const result = lessonService.checkAnswer(lesson.exercises[currentExerciseIndex].id, selectedAnswer!);
     
     setIsCorrect(result.correct);
-    setExplanation(result.explanation);
-    setXpEarned(result.xpEarned);
+    setScore(result.xpEarned);
     setShowResult(true);
 
     // Animate result appearance
@@ -131,14 +144,14 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
       // Move to next exercise
       setCurrentStep(nextStep);
       if (nextStep < lesson.exercises.length) {
-        setCurrentExercise(lesson.exercises[nextStep]);
+        setCurrentExerciseIndex(nextStep);
       }
       
       // Reset state
       setSelectedAnswer(null);
       setShowResult(false);
       setIsCorrect(false);
-      setExplanation('');
+      setScore(0);
       resultOpacity.value = 0;
     }
   };
@@ -163,9 +176,23 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
   };
 
   const handlePlayAudio = async (character: ChineseCharacter) => {
-    setIsPlaying(true);
-    await lessonService.playCharacterAudio(character);
-    setIsPlaying(false);
+    try {
+      if (isTTSPlaying) {
+        await stopTTS();
+        setIsPlaying(false);
+      } else {
+        setIsPlaying(true);
+        await speakVocabulary({
+          simplified: character.hanzi,
+          pinyin: character.pinyin,
+          tone: 1, // Default tone
+        });
+        setIsPlaying(false);
+      }
+    } catch (error) {
+      console.error('Character audio error:', error);
+      setIsPlaying(false);
+    }
   };
 
   const renderCharacterCard = (character: ChineseCharacter, index: number) => (
@@ -173,11 +200,16 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
       <View style={styles.characterHeader}>
         <Text style={styles.hanziText}>{character.hanzi}</Text>
         <TouchableOpacity
-          style={styles.audioButton}
+          style={[
+            styles.audioButton,
+            (isTTSLoading || isTTSPlaying) && styles.audioButtonActive
+          ]}
           onPress={() => handlePlayAudio(character)}
-          disabled={isPlaying}
+          disabled={isTTSLoading || isPlaying}
         >
-          {isPlaying ? (
+          {isTTSLoading ? (
+            <ActivityIndicator size="small" color={colors.primary[600]} />
+          ) : (isPlaying || isTTSPlaying) ? (
             <Pause size={20} color={colors.primary[600]} />
           ) : (
             <Volume2 size={20} color={colors.primary[600]} />
@@ -300,13 +332,13 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
   );
 
   const renderExercise = () => {
-    if (!currentExercise) return null;
+    if (!lesson || !lesson.exercises[currentExerciseIndex]) return null;
 
-    switch (currentExercise.type) {
+    switch (lesson.exercises[currentExerciseIndex].type) {
       case 'multiple_choice':
-        return renderMultipleChoiceExercise(currentExercise);
+        return renderMultipleChoiceExercise(lesson.exercises[currentExerciseIndex]);
       case 'tone_recognition':
-        return renderToneRecognitionExercise(currentExercise);
+        return renderToneRecognitionExercise(lesson.exercises[currentExerciseIndex]);
       default:
         return (
           <Text style={styles.placeholderText}>
@@ -392,7 +424,7 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
           )}
 
           {/* Exercise Section */}
-          {currentStep > 0 && currentExercise && (
+          {currentStep > 0 && currentExerciseIndex !== null && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>
                 Bài tập {currentStep}/{lesson.exercises.length}
@@ -436,12 +468,12 @@ export const LessonScreen: React.FC<LessonScreenProps> = ({ lessonId }) => {
                       </Text>
                     </View>
                     
-                    <Text style={styles.resultExplanation}>{explanation}</Text>
+                    <Text style={styles.resultExplanation}>{lesson.exercises[currentExerciseIndex].explanation}</Text>
                     
-                    {xpEarned > 0 && (
+                    {score > 0 && (
                       <View style={styles.xpEarnedContainer}>
                         <Trophy size={16} color={colors.secondary[600]} />
-                        <Text style={styles.xpEarnedText}>+{xpEarned} XP</Text>
+                        <Text style={styles.xpEarnedText}>+{score} XP</Text>
                       </View>
                     )}
                     
@@ -775,5 +807,8 @@ const styles = StyleSheet.create({
   },
   animatedContainer: {
     // Empty style for animated container
+  },
+  audioButtonActive: {
+    backgroundColor: colors.primary[100],
   },
 }); 

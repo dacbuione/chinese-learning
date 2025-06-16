@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { expoTTSService, TTSOptions } from '../services/tts/ExpoTTSService';
+import expoTTSService, { TTSOptions } from '../services/tts/ExpoTTSService';
 import { audioPlayerService, AudioState } from '../services/tts/AudioPlayer';
 
 /**

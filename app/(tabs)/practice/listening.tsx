@@ -7,13 +7,15 @@ import {
   TouchableOpacity,
   Animated,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useLessonTTS } from '../../../src/hooks/useTTS';
 
 // Import components and theme
-import { colors, getResponsiveSpacing, getResponsiveFontSize } from '../../../src/theme';
+import { colors, getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../../src/theme';
 import { useTranslation } from '../../../src/localization';
 import { Card } from '../../../src/components/ui/atoms/Card';
 import { Button } from '../../../src/components/ui/atoms/Button';
@@ -143,6 +145,14 @@ export default function ListeningPracticeScreen() {
   const slideAnim = new Animated.Value(0);
   const audioWaveAnim = new Animated.Value(0);
 
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    speakLessonContent,
+    stop: stopTTS,
+  } = useLessonTTS();
+
   const currentExercise = listeningData[currentExerciseIndex];
   const currentQuestion = currentExercise.questions[currentQuestionIndex];
   const totalQuestions = listeningData.reduce((sum: number, exercise: ListeningExercise) => sum + exercise.questions.length, 0);
@@ -207,18 +217,28 @@ export default function ListeningPracticeScreen() {
     };
   }, [isPlaying, currentTime, currentExercise.duration]);
 
-  const handlePlayAudio = () => {
-    if (currentTime >= currentExercise.duration) {
-      setCurrentTime(0);
+  const handlePlayAudio = async () => {
+    try {
+      if (currentTime >= currentExercise.duration) {
+        setCurrentTime(0);
+      }
+      
+      if (isTTSPlaying) {
+        await stopTTS();
+        setIsPlaying(false);
+      } else {
+        setIsPlaying(true);
+        await speakLessonContent({
+          chinese: currentExercise.transcript,
+          speed: playbackSpeed,
+        });
+        setIsPlaying(false);
+      }
+    } catch (error) {
+      console.error('Audio playback error:', error);
+      Alert.alert('Lỗi phát âm', 'Không thể phát âm thanh. Vui lòng thử lại.');
+      setIsPlaying(false);
     }
-    setIsPlaying(!isPlaying);
-    
-    // Simulate audio feedback
-    Alert.alert(
-      '🔊 Phát âm thanh',
-      `Đang phát: "${currentExercise.title}"\nTốc độ: ${playbackSpeed}x`,
-      [{ text: 'OK' }]
-    );
   };
 
   const handleSeekTo = (time: number) => {
@@ -420,14 +440,22 @@ export default function ListeningPracticeScreen() {
           {/* Audio Controls */}
           <View style={styles.audioControls}>
             <TouchableOpacity
-              style={styles.playButton}
+              style={[
+                styles.playButton,
+                (isTTSLoading || isTTSPlaying) && styles.playButtonActive
+              ]}
               onPress={handlePlayAudio}
+              disabled={isTTSLoading}
             >
-              <Ionicons 
-                name={isPlaying ? "pause" : "play"} 
-                size={32} 
-                color={colors.neutral[50]} 
-              />
+              {isTTSLoading ? (
+                <ActivityIndicator size="small" color={colors.neutral[50]} />
+              ) : (
+                <Ionicons 
+                  name={(isPlaying || isTTSPlaying) ? "pause" : "play"} 
+                  size={32} 
+                  color={colors.neutral[50]} 
+                />
+              )}
             </TouchableOpacity>
             
             <View style={styles.timeContainer}>
@@ -737,6 +765,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary[500],
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  playButtonActive: {
+    backgroundColor: colors.accent[500],
   },
   timeContainer: {
     flex: 1,

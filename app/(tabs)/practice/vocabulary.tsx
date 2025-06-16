@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -13,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 // Import components and theme
 import { colors, getResponsiveSpacing, getResponsiveFontSize } from '../../../src/theme';
 import { useTranslation } from '../../../src/localization';
+import { useVocabularyTTS } from '../../../src/hooks/useTTS';
 import { Card } from '../../../src/components/ui/atoms/Card';
 import { Button } from '../../../src/components/ui/atoms/Button';
 
@@ -144,6 +146,14 @@ export default function VocabularyPracticeScreen() {
   const [isSessionComplete, setIsSessionComplete] = useState(false);
   const [selectedDifficulty, setSelectedDifficulty] = useState<'khó nhớ' | 'bình thường' | 'dễ nhớ' | null>(null);
 
+  // TTS Hook
+  const {
+    isLoading: isTTSLoading,
+    isPlaying: isTTSPlaying,
+    speakVocabulary,
+    stop: stopTTS,
+  } = useVocabularyTTS();
+
   // Animation values
   const fadeAnim = new Animated.Value(1);
   const slideAnim = new Animated.Value(0);
@@ -177,6 +187,23 @@ export default function VocabularyPracticeScreen() {
       4: colors.primary[600],  // Fourth tone - blue
     };
     return toneColors[tone as keyof typeof toneColors] || colors.neutral[500];
+  };
+
+  const handlePlayAudio = async () => {
+    try {
+      if (isTTSPlaying) {
+        await stopTTS();
+      } else {
+        await speakVocabulary({
+          simplified: currentCard.hanzi,
+          pinyin: currentCard.pinyin,
+          tone: currentCard.tone,
+        });
+      }
+    } catch (error) {
+      console.error('Vocabulary audio error:', error);
+      Alert.alert('Lỗi phát âm', 'Không thể phát âm từ vựng. Vui lòng thử lại.');
+    }
   };
 
   const handleShowAnswer = () => {
@@ -352,8 +379,19 @@ export default function VocabularyPracticeScreen() {
             </View>
 
             {/* Audio Button */}
-            <TouchableOpacity style={styles.audioButton}>
-              <Ionicons name="volume-high" size={32} color={colors.primary[500]} />
+            <TouchableOpacity 
+              style={[
+                styles.audioButton,
+                (isTTSLoading || isTTSPlaying) && styles.audioButtonActive
+              ]} 
+              onPress={handlePlayAudio}
+              disabled={isTTSLoading}
+            >
+              <Ionicons 
+                name={isTTSPlaying ? "pause" : "volume-high"} 
+                size={32} 
+                color={colors.primary[500]} 
+              />
             </TouchableOpacity>
 
             {/* Show Answer Button */}
@@ -731,5 +769,8 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+  },
+  audioButtonActive: {
+    backgroundColor: colors.primary[100],
   },
 }); 

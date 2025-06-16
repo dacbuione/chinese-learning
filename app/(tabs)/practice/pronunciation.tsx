@@ -19,7 +19,7 @@ import { usePronunciationTTS } from '../../../src/hooks/useTTS';
 
 // Theme
 import { colors, getResponsiveSpacing } from '../../../src/theme';
-import { ArrowLeft, Mic, Volume2, Pause } from 'lucide-react-native';
+import { ArrowLeft, Mic } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function PronunciationPracticeScreen() {
@@ -79,20 +79,15 @@ export default function PronunciationPracticeScreen() {
 
   const currentExercise = pronunciationExercises[currentExerciseIndex];
 
-
-
   const handlePlayAudio = async () => {
     try {
-      console.log(`🎯 Playing pronunciation for: ${currentExercise.character}`);
       if (isTTSPlaying) {
-        console.log('🛑 Stopping TTS...');
         await stopTTS();
       } else {
-        console.log('▶️ Starting TTS...');
-        await speakForPractice(currentExercise.character, 0.8); // Slower speed for practice
+        await speakForPractice(currentExercise.character, 0.8);
       }
     } catch (error) {
-      console.error('❌ TTS Error:', error);
+      console.error('TTS Error:', error);
       Alert.alert('Lỗi phát âm', 'Không thể phát âm thanh. Vui lòng thử lại.');
     }
   };
@@ -222,16 +217,21 @@ export default function PronunciationPracticeScreen() {
           <View style={styles.audioControls}>
             {/* Audio Button */}
             <TouchableOpacity
-              style={styles.audioButton}
+              style={[
+                styles.audioButton,
+                isTTSPlaying && styles.audioButtonActive,
+              ]}
               onPress={handlePlayAudio}
+              disabled={isTTSLoading}
             >
               <Ionicons
-                name="volume-high"
+                name={isTTSPlaying ? "pause" : "volume-high"}
                 size={32}
-                color={colors.primary[500]}
+                color={isTTSPlaying ? colors.neutral[50] : colors.primary[500]}
               />
             </TouchableOpacity>
 
+            {/* Record Button */}
             <Button
               variant="primary"
               size="lg"
@@ -240,9 +240,10 @@ export default function PronunciationPracticeScreen() {
               style={styles.recordButton}
             >
               <Mic size={24} color={colors.neutral[50]} />
+              <TranslationText size="base" color={colors.neutral[50]}>
+                {isRecording ? 'Đang ghi âm...' : 'Ghi âm luyện tập'}
+              </TranslationText>
             </Button>
-
-
           </View>
         </Card>
 
@@ -373,7 +374,6 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: getResponsiveSpacing('md'),
   },
-
   audioButton: {
     borderWidth: 1,
     borderColor: colors.primary[500],
@@ -383,12 +383,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
+  audioButtonActive: {
+    backgroundColor: colors.primary[500],
+    borderColor: colors.primary[600],
+  },
   recordButton: {
     flexDirection: 'row',
-    borderRadius: 50,
+    borderRadius: 25,
     height: 50,
     justifyContent: 'center',
+    gap: getResponsiveSpacing('sm'),
   },
   tipsContainer: {
     padding: getResponsiveSpacing('lg'),
@@ -413,5 +417,4 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-
 });
