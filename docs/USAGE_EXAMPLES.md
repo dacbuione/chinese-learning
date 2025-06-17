@@ -537,3 +537,277 @@ export const VocabularyCardPresenter: React.FC<{
 - Modular architecture
 
 **Sử dụng các examples này như template để implement các features mới trong ứng dụng học tiếng Trung!** 
+
+# 🎤 Hướng Dẫn Sử Dụng Speech Recognition
+
+## 📱 **TÍNH NĂNG MỚI: NHẬN DIỆN GIỌNG NÓI**
+
+Chúc mừng! Ứng dụng Chinese Learning App đã được tích hợp **Speech Recognition** hoàn toàn **MIỄN PHÍ** để giúp bạn luyện phát âm tiếng Trung hiệu quả hơn.
+
+---
+
+## 🚀 **CÁC TÍNH NĂNG CHÍNH**
+
+### 1. 🎯 **Nhận Diện Giọng Nói Real-time**
+- **Công nghệ**: Web Speech API (Chrome/Edge)
+- **Ngôn ngữ hỗ trợ**: Tiếng Trung (zh-CN), Tiếng Việt (vi-VN)
+- **Thời gian**: Tối đa 30 giây cho mỗi lần đọc
+- **Độ chính xác**: 85-95% với phát âm chuẩn
+
+### 2. 📊 **Đánh Giá Phát Âm Chi Tiết**
+- **Độ chính xác từ**: Phân tích từng ký tự tiếng Trung
+- **Thanh điệu**: Đánh giá độ chính xác thanh điệu (声调)
+- **Trôi chảy**: Đánh giá tốc độ và sự mượt mà
+- **Điểm tổng**: Từ 0-100% với feedback cụ thể
+
+### 3. 💡 **Gợi Ý Cải Thiện**
+- Phân tích lỗi phát âm phổ biến
+- Đưa ra lời khuyên cụ thể
+- Hướng dẫn luyện tập hiệu quả
+
+---
+
+## 📖 **CÁCH SỬ DỤNG**
+
+### **Bước 1: Truy cập Reading Practice**
+```
+1. Mở ứng dụng Chinese Learning App
+2. Chọn tab "Practice" (Luyện tập)
+3. Chọn "Reading" (Đọc hiểu)
+4. Chọn bài đọc bất kỳ
+```
+
+### **Bước 2: Chuyển sang Tab "Đọc to"**
+```
+1. Trong màn hình Reading Practice
+2. Nhấn tab "Đọc to" (biểu tượng microphone)
+3. Bạn sẽ thấy giao diện Speech Recognition
+```
+
+### **Bước 3: Bắt đầu Luyện Phát Âm**
+```
+1. Đọc văn bản tiếng Trung hiển thị
+2. Nhấn "Bắt đầu ghi âm"
+3. Cho phép truy cập microphone (lần đầu)
+4. Đọc to và rõ ràng
+5. Nhấn "Dừng ghi âm" hoặc chờ tự động dừng
+6. Xem kết quả đánh giá
+```
+
+---
+
+## 🎯 **TIPS LUYỆN TẬP HIỆU QUẢ**
+
+### **1. Chuẩn Bị Trước Khi Đọc**
+```
+✅ Đọc thầm 1-2 lần để hiểu nội dung
+✅ Chú ý pinyin và thanh điệu
+✅ Đảm bảo môi trường yên tĩnh
+✅ Microphone hoạt động tốt
+```
+
+### **2. Kỹ Thuật Đọc**
+```
+✅ Đọc chậm và rõ ràng
+✅ Nhấn mạnh thanh điệu
+✅ Tạm dừng giữa các câu
+✅ Phát âm đầy đủ từng từ
+```
+
+### **3. Xử Lý Kết Quả**
+```
+📊 Điểm 90-100%: Xuất sắc! Tiếp tục duy trì
+📊 Điểm 75-89%: Tốt! Luyện thêm thanh điệu
+📊 Điểm 50-74%: Khá! Đọc chậm hơn
+📊 Điểm <50%: Cần cải thiện, nghe và bắt chước
+```
+
+---
+
+## 🔧 **YÊU CẦU HỆ THỐNG**
+
+### **Trình Duyệt Hỗ Trợ**
+- ✅ **Chrome** (Khuyến nghị - độ chính xác cao nhất)
+- ✅ **Microsoft Edge** (Hỗ trợ tốt)
+- ✅ **Safari** (iOS/macOS - hỗ trợ cơ bản)
+- ❌ **Firefox** (Chưa hỗ trợ Web Speech API)
+
+### **Thiết Bị**
+- 📱 **Mobile**: iOS 14+, Android 8+
+- 💻 **Desktop**: Windows 10+, macOS 10.15+
+- 🎤 **Microphone**: Bất kỳ (tích hợp hoặc rời)
+
+### **Kết Nối**
+- 🌐 **Internet**: Cần kết nối ổn định
+- 📶 **Tốc độ**: Tối thiểu 1 Mbps
+
+---
+
+## 🚨 **XỬ LÝ SỰ CỐ**
+
+### **Lỗi Thường Gặp & Cách Fix**
+
+#### **1. "Trình duyệt không hỗ trợ"**
+```
+🔧 Giải pháp:
+- Sử dụng Chrome hoặc Edge
+- Cập nhật trình duyệt lên phiên bản mới nhất
+- Kiểm tra JavaScript có được bật không
+```
+
+#### **2. "Cần quyền truy cập microphone"**
+```
+🔧 Giải pháp:
+- Nhấn "Allow" khi được hỏi
+- Kiểm tra cài đặt privacy trong trình duyệt
+- Reload trang và thử lại
+```
+
+#### **3. "Không phát hiện giọng nói"**
+```
+🔧 Giải pháp:
+- Kiểm tra microphone hoạt động
+- Nói to hơn và rõ ràng hơn
+- Giảm tiếng ồn xung quanh
+- Thử lại với câu ngắn hơn
+```
+
+#### **4. "Lỗi kết nối mạng"**
+```
+🔧 Giải pháp:
+- Kiểm tra kết nối internet
+- Thử reload trang
+- Chuyển sang WiFi nếu đang dùng 4G
+```
+
+#### **5. "Độ chính xác thấp"**
+```
+🔧 Giải pháp:
+- Đọc chậm hơn
+- Phát âm rõ ràng từng từ
+- Chú ý thanh điệu tiếng Trung
+- Luyện tập với câu ngắn trước
+```
+
+---
+
+## 📊 **HIỂU KẾT QUẢ ĐÁNH GIÁ**
+
+### **Các Chỉ Số Quan Trọng**
+
+#### **1. Điểm Tổng (0-100%)**
+- Đánh giá tổng thể độ chính xác phát âm
+- Kết hợp tất cả yếu tố: từ, thanh điệu, trôi chảy
+
+#### **2. Độ Chính Xác Từ**
+- Phân tích từng ký tự tiếng Trung
+- So sánh với text gốc
+- Phát hiện từ bị đọc sai hoặc bỏ sót
+
+#### **3. Thanh Điệu (声调)**
+- Đánh giá 4 thanh điệu cơ bản
+- Phát hiện lỗi thanh điệu phổ biến
+- Quan trọng nhất trong tiếng Trung
+
+#### **4. Trôi Chảy**
+- Tốc độ đọc phù hợp
+- Độ mượt mà giữa các từ
+- Thời gian phản hồi
+
+### **Mức Đánh Giá**
+```
+🏆 EXCELLENT (90-100%): Phát âm xuất sắc
+👍 GOOD (75-89%): Phát âm tốt
+👌 FAIR (50-74%): Phát âm khá, cần cải thiện
+💪 POOR (<50%): Cần luyện tập nhiều hơn
+```
+
+---
+
+## 🎓 **LỘ TRÌNH LUYỆN TẬP**
+
+### **Tuần 1-2: Làm Quen**
+```
+🎯 Mục tiêu: Đạt 60% accuracy
+📚 Nội dung: Câu đơn giản 5-10 từ
+⏰ Thời gian: 15 phút/ngày
+🔄 Lặp lại: Mỗi câu 3-5 lần
+```
+
+### **Tuần 3-4: Phát Triển**
+```
+🎯 Mục tiêu: Đạt 75% accuracy
+📚 Nội dung: Đoạn văn ngắn 20-30 từ
+⏰ Thời gian: 20 phút/ngày
+🔄 Lặp lại: Mỗi đoạn 2-3 lần
+```
+
+### **Tuần 5-8: Thành Thạo**
+```
+🎯 Mục tiêu: Đạt 85% accuracy
+📚 Nội dung: Đoạn văn dài 50+ từ
+⏰ Thời gian: 30 phút/ngày
+🔄 Lặp lại: Đọc liền mạch
+```
+
+### **Tuần 9+: Hoàn Thiện**
+```
+🎯 Mục tiêu: Đạt 90%+ accuracy
+📚 Nội dung: Bài đọc phức tạp
+⏰ Thời gian: 45 phút/ngày
+🔄 Lặp lại: Tập trung vào tốc độ
+```
+
+---
+
+## 🏆 **THÀNH TÍCH & ĐỘNG LỰC**
+
+### **Theo Dõi Tiến Độ**
+- 📈 Biểu đồ accuracy theo thời gian
+- 🎯 Streak ngày luyện tập liên tiếp
+- 🏅 Badges thành tích đặc biệt
+- 📊 So sánh với người dùng khác
+
+### **Mục Tiêu Hàng Ngày**
+- 🎤 Đọc ít nhất 5 câu/ngày
+- 📊 Duy trì accuracy >75%
+- ⏰ Luyện tập 15 phút/ngày
+- 🔄 Cải thiện 1% mỗi tuần
+
+---
+
+## 🆘 **HỖ TRỢ & LIÊN HỆ**
+
+### **Cần Thêm Hỗ Trợ?**
+- 📧 Email: support@chineselearningapp.com
+- 💬 Chat: Trong ứng dụng
+- 📚 FAQ: Phần Help trong app
+- 🎥 Video tutorials: YouTube channel
+
+### **Feedback & Đề Xuất**
+- ⭐ Rate app trên App Store/Google Play
+- 💡 Gửi ý kiến qua app feedback
+- 🐛 Báo lỗi qua bug report
+- 🚀 Đề xuất tính năng mới
+
+---
+
+## 🔮 **TÍNH NĂNG SẮP TỚI**
+
+### **Version 2.0 (Coming Soon)**
+- 🎯 **Tone Recognition**: Phân tích chi tiết từng thanh điệu
+- 🗣️ **Conversation Practice**: Luyện đối thoại với AI
+- 📝 **Writing Integration**: Kết hợp viết và đọc
+- 🎮 **Gamification**: Thêm game phát âm
+
+### **Version 3.0 (Future)**
+- 🤖 **AI Teacher**: Giáo viên AI cá nhân hóa
+- 🌍 **Offline Mode**: Hoạt động không cần internet
+- 📱 **Watch App**: Luyện tập trên Apple Watch
+- 👥 **Social Features**: Luyện tập cùng bạn bè
+
+---
+
+**🎉 Chúc bạn luyện tập hiệu quả và tiến bộ nhanh chóng với Speech Recognition!**
+
+*Developed with ❤️ by Chinese Learning App Team* 

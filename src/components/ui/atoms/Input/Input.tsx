@@ -16,8 +16,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 // Import theme and utilities
-import { colors } from '../../../../theme/colors';
-import { getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../../../theme';
+import { colors } from '@/theme/colors';
+import { getResponsiveSpacing, getResponsiveFontSize, Layout } from '@/theme';
 
 // Import types
 import type { 

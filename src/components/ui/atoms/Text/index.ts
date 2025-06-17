@@ -1,7 +1,9 @@
+export { BaseText } from './BaseText';
 export { ChineseText } from './ChineseText';
 export { PinyinText } from './PinyinText';
 export { TranslationText } from './TranslationText';
-export { BaseText } from './BaseText';
+export { HighlightedChineseText } from './HighlightedChineseText';
+
 export type { 
   ChineseTextProps, 
   PinyinTextProps, 

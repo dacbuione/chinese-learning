@@ -2,8 +2,8 @@ import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { CardProps } from './Card.types';
-import { colors, Layout } from '../../../../theme';
-import { getResponsiveSpacing } from '../../../../theme/responsive';
+import { colors, Layout } from '@/theme';
+import { getResponsiveSpacing } from '@/theme/responsive';
 
 export const Card: React.FC<CardProps> = ({
   children,

@@ -1,7 +1,7 @@
 import React from 'react';
 import { BaseText } from './BaseText';
 import { TranslationTextProps } from './Text.types';
-import { colors } from '../../../../theme';
+import { colors } from '@/theme';
 
 export const TranslationText: React.FC<TranslationTextProps> = ({
   language = 'vi',

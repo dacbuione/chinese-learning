@@ -6,7 +6,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 import { Input } from '../../atoms/Input';
 
 // Import theme
-import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '../../../../theme';
+import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '@/theme';
 
 // Simple SearchBar Props
 interface SimpleSearchBarProps {

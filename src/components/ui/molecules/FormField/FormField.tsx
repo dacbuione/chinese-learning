@@ -8,7 +8,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Input } from '../../atoms/Input';
 
 // Import theme
-import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '../../../../theme';
+import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '@/theme';
 
 // Simple FormField Props
 interface SimpleFormFieldProps {

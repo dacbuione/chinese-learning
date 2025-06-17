@@ -100,7 +100,7 @@ export default function PracticeScreen() {
       id: 'reading',
       title: 'Đọc hiểu',
       description: 'Luyện đọc và hiểu đoạn văn tiếng Trung',
-      icon: 'book-open',
+      icon: 'book-outline',
       color: colors.neutral[700],
       gradient: [colors.neutral[600], colors.neutral[800]],
       difficulty: 'hard',

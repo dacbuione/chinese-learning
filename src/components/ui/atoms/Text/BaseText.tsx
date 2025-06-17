@@ -1,8 +1,8 @@
 import React from 'react';
 import { Text } from 'react-native';
 import { BaseTextProps } from './Text.types';
-import { colors, typography } from '../../../../theme';
-import { responsiveTypography } from '../../../../theme/responsive';
+import { colors, typography } from '@/theme';
+import { responsiveTypography } from '@/theme/responsive';
 
 export const BaseText: React.FC<BaseTextProps> = ({
   size = 'base',

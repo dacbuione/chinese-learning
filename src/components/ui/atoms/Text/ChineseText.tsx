@@ -2,8 +2,8 @@ import React from 'react';
 import { View } from 'react-native';
 import { BaseText } from './BaseText';
 import { ChineseTextProps } from './Text.types';
-import { colors } from '../../../../theme';
-import { responsiveTypography } from '../../../../theme/responsive';
+import { colors } from '@/theme';
+import { responsiveTypography } from '@/theme/responsive';
 
 export const ChineseText: React.FC<ChineseTextProps> = ({
   tone,

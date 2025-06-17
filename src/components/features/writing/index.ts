@@ -1,6 +1,7 @@
 // Writing feature exports
 export { WritingPad } from './components/WritingPad';
 export { StrokeOrderAnimation } from './components/StrokeOrderAnimation/StrokeOrderAnimation';
+export { StrokeOrder } from './components/StrokeOrder';
 
 // Writing types
 export type {

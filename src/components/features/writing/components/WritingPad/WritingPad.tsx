@@ -2,10 +2,10 @@ import React, { useState, useRef, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 import { Svg, Path, G } from 'react-native-svg';
-import { Card } from '../../../../ui/atoms/Card';
-import { TranslationText } from '../../../../ui/atoms/Text';
-import { Button } from '../../../../ui/atoms/Button';
-import { colors, Layout, getResponsiveSpacing } from '../../../../../theme';
+import { Card } from '@/ui/atoms/Card';
+import { TranslationText } from '@/ui/atoms/Text';
+import { Button } from '@/ui/atoms/Button';
+import { colors, Layout, getResponsiveSpacing } from '@/theme';
 import { WritingPadProps, StrokePath } from '../../../writing/types/writing.types';
 import { RotateCcw, Check, Eye, Play, Pause } from 'lucide-react-native';
 

@@ -1,6 +1,6 @@
 import React, { Component, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, getResponsiveSpacing, getResponsiveFontSize } from '../../theme';
+import { colors, getResponsiveSpacing, getResponsiveFontSize } from '@/theme';
 import { AlertTriangle, RotateCcw } from 'lucide-react-native';
 
 interface Props {

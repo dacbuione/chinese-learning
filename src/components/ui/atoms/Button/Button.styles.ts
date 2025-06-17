@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../../../theme';
+import { colors, getResponsiveSpacing, getResponsiveFontSize, Layout } from '@/theme';
 import { ButtonVariant, ButtonSize } from './Button.types';
 
 export const createButtonStyles = (variant: ButtonVariant, size: ButtonSize, fullWidth?: boolean) => {

@@ -3,7 +3,7 @@ import {
   ChineseWord, 
   VocabularyProgress, 
   VocabularyService 
-} from '../../services/vocabularyService';
+} from '@/services/vocabularyService';
 
 export interface VocabularyState {
   allWords: ChineseWord[];

@@ -3,7 +3,7 @@ import { View, StyleSheet, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 
 // Components  
-import { TonePractice } from '../../../src/components/features/pronunciation/components/TonePractice/TonePractice';
+import { TonePractice } from '../../../src/components/features/pronunciation/components/TonePractice';
 import { TranslationText } from '../../../src/components/ui/atoms/Text';
 import { Button } from '../../../src/components/ui/atoms/Button';
 

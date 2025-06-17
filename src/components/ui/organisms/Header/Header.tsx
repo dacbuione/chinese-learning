@@ -35,7 +35,7 @@ import {
   getResponsiveFontSize,
   Layout,
   typography,
-} from '../../../../theme';
+} from '@/theme';
 
 // Constants
 const HEADER_HEIGHT = {

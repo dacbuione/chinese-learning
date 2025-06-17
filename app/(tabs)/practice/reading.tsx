@@ -12,10 +12,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 // Import components and theme
-import { colors, getResponsiveSpacing, getResponsiveFontSize } from '../../../src/theme';
+import {
+  colors,
+  getResponsiveSpacing,
+  getResponsiveFontSize,
+} from '../../../src/theme';
 import { useTranslation } from '../../../src/localization';
 import { Button } from '../../../src/components/ui/atoms/Button';
 import { Card } from '../../../src/components/ui/atoms/Card';
+import { AudioButton } from '../../../src/components/common/AudioButton';
+import { HighlightedChineseText } from '../../../src/components/ui/atoms/Text';
+import { SmartSpeechRecognitionComponent } from '../../../src/components/features/pronunciation';
+import { WordAccuracy } from '../../../src/components/features/pronunciation/components/NativeSpeechRecognition/NativeSpeechRecognition';
 
 // Reading data interface
 interface ReadingPassage {
@@ -125,6 +133,8 @@ export default function ReadingPracticeScreen() {
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
   const [isSessionComplete, setIsSessionComplete] = useState(false);
+  const [currentTab, setCurrentTab] = useState<'reading' | 'speaking'>('reading');
+  const [wordAccuracies, setWordAccuracies] = useState<WordAccuracy[]>([]);
 
   // Animation values
   const fadeAnim = new Animated.Value(1);
@@ -179,6 +189,8 @@ export default function ReadingPracticeScreen() {
       // Next passage
       setCurrentPassageIndex(prev => prev + 1);
       setCurrentQuestionIndex(0);
+      // Clear word highlighting when moving to new passage
+      setWordAccuracies([]);
     } else {
       // Session complete
       setIsSessionComplete(true);
@@ -193,6 +205,15 @@ export default function ReadingPracticeScreen() {
     setCorrectAnswers(0);
     setShowTranslation(false);
     setIsSessionComplete(false);
+    setWordAccuracies([]);
+  };
+
+  const handleWordAccuracy = (accuracies: WordAccuracy[]) => {
+    setWordAccuracies(accuracies);
+  };
+
+  const handleWordPress = (word: string) => {
+    console.log('Word pressed:', word);
   };
 
   const renderCompletionScreen = () => (
@@ -296,14 +317,24 @@ export default function ReadingPracticeScreen() {
         <Card variant="default" style={styles.passageCard}>
           <View style={styles.passageHeader}>
             <Text style={styles.passageTitle}>{currentPassage.title}</Text>
-            <View style={styles.difficultyBadge}>
-              <Text style={styles.difficultyText}>HSK {currentPassage.hskLevel}</Text>
+            <View style={styles.audioButtonContainer}>
+              <AudioButton
+                hanzi={currentPassage.content}
+                pinyin=""
+                tone={1}
+                size="large"
+              />
             </View>
           </View>
           
-          {/* Chinese Text */}
+          {/* Chinese Text with Highlighting */}
           <View style={styles.textContainer}>
-            <Text style={styles.chineseText}>{currentPassage.content}</Text>
+            <HighlightedChineseText
+              text={currentPassage.content}
+              wordAccuracies={wordAccuracies}
+              style={styles.chineseText}
+              onWordPress={handleWordPress}
+            />
           </View>
           
           {/* Pinyin */}
@@ -320,8 +351,47 @@ export default function ReadingPracticeScreen() {
           )}
         </Card>
 
-        {/* Question */}
-        <Card variant="elevated" style={styles.questionCard}>
+        {/* Tab Navigation */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, currentTab === 'reading' && styles.activeTab]}
+            onPress={() => setCurrentTab('reading')}
+          >
+            <Ionicons 
+              name="book-outline" 
+              size={20} 
+              color={currentTab === 'reading' ? colors.primary[500] : colors.neutral[600]} 
+            />
+            <Text style={[
+              styles.tabText,
+              currentTab === 'reading' && styles.activeTabText
+            ]}>
+              Đọc hiểu
+            </Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.tab, currentTab === 'speaking' && styles.activeTab]}
+            onPress={() => setCurrentTab('speaking')}
+          >
+            <Ionicons 
+              name="mic-outline" 
+              size={20} 
+              color={currentTab === 'speaking' ? colors.primary[500] : colors.neutral[600]} 
+            />
+            <Text style={[
+              styles.tabText,
+              currentTab === 'speaking' && styles.activeTabText
+            ]}>
+              Đọc to
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Tab Content */}
+        {currentTab === 'reading' ? (
+          /* Question */
+          <Card variant="elevated" style={styles.questionCard}>
           <Text style={styles.questionTitle}>
             Câu hỏi {currentQuestionIndex + 1}/{currentPassage.questions.length}
           </Text>
@@ -409,6 +479,25 @@ export default function ReadingPracticeScreen() {
             </Animated.View>
           )}
         </Card>
+        ) : (
+          /* Speech Recognition Tab */
+          <View style={styles.speechContainer}>
+            <SmartSpeechRecognitionComponent
+              expectedText={currentPassage.content}
+              language="zh-CN"
+              maxDuration={30000} // 30 seconds for reading
+              onResult={(result) => {
+                console.log('Pronunciation result:', result);
+                // Handle pronunciation result here
+              }}
+              onError={(error) => {
+                console.error('Speech recognition error:', error);
+              }}
+              onWordAccuracy={handleWordAccuracy}
+              showExpectedText={false}
+            />
+          </View>
+        )}
         
         {/* Bottom spacing */}
         <View style={styles.bottomSpacing} />
@@ -494,16 +583,10 @@ const styles = StyleSheet.create({
     color: colors.neutral[900],
     flex: 1,
   },
-  difficultyBadge: {
+  audioButtonContainer: {
+    padding: getResponsiveSpacing('sm'),
     backgroundColor: colors.primary[100],
-    paddingHorizontal: getResponsiveSpacing('md'),
-    paddingVertical: getResponsiveSpacing('xs'),
     borderRadius: 16,
-  },
-  difficultyText: {
-    fontSize: getResponsiveFontSize('xs'),
-    color: colors.primary[700],
-    fontWeight: '600',
   },
   textContainer: {
     marginBottom: getResponsiveSpacing('lg'),
@@ -701,4 +784,44 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: getResponsiveSpacing('xl'),
   },
-}); 
+  // Tab styles
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.neutral[100],
+    marginHorizontal: getResponsiveSpacing('lg'),
+    marginBottom: getResponsiveSpacing('md'),
+    borderRadius: 8,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: getResponsiveSpacing('sm'),
+    paddingHorizontal: getResponsiveSpacing('md'),
+    borderRadius: 6,
+    gap: getResponsiveSpacing('xs'),
+  },
+  activeTab: {
+    backgroundColor: colors.neutral[50],
+    shadowColor: colors.neutral[900],
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: getResponsiveFontSize('sm'),
+    fontWeight: '500',
+    color: colors.neutral[600],
+  },
+  activeTabText: {
+    color: colors.primary[500],
+    fontWeight: '600',
+  },
+  speechContainer: {
+    marginHorizontal: getResponsiveSpacing('lg'),
+    marginBottom: getResponsiveSpacing('lg'),
+  },
+});

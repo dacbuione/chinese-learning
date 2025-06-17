@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { Card } from '../../../../ui/atoms/Card';
-import { ChineseText, PinyinText, TranslationText } from '../../../../ui/atoms/Text';
-import { Button } from '../../../../ui/atoms/Button';
-import { ProgressBar } from '../../../../ui/molecules/ProgressBar';
-import { colors, Layout, getResponsiveSpacing } from '../../../../../theme';
-import { QuizComponentProps, QuizQuestion, QuizResult } from '../../types/quiz.types';
+import { Card } from '@/ui/atoms/Card';
+import { ChineseText, PinyinText, TranslationText } from '@/ui/atoms/Text';
+import { Button } from '@/ui/atoms/Button';
+import { ProgressBar } from '@/ui/molecules/ProgressBar';
+import { colors, Layout, getResponsiveSpacing } from '@/theme';
+import { QuizComponentProps, QuizQuestion, QuizResult } from '@/types/quiz.types';
 import { Check, X, SkipForward, Volume2, Timer, Award, ChevronRight } from 'lucide-react-native';
-import { useVocabularyTTS } from '../../../../../hooks/useTTS';
+import { useVocabularyTTS } from '@/hooks/useTTS';
 
 export const QuizComponent: React.FC<QuizComponentProps> = ({
   questions,

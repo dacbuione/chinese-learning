@@ -1,7 +1,7 @@
 import React from 'react';
 import { BaseText } from './BaseText';
 import { PinyinTextProps } from './Text.types';
-import { colors } from '../../../../theme';
+import { colors } from '@/theme';
 
 export const PinyinText: React.FC<PinyinTextProps> = ({
   tone,

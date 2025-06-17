@@ -28,7 +28,7 @@ import {
   getResponsiveFontSize,
   Layout,
   typography,
-} from '../../../../theme';
+} from '@/theme';
 
 /**
  * Modern Modal Component for Chinese Learning App

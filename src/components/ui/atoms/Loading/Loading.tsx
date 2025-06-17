@@ -13,8 +13,8 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Import theme and utilities
-import { colors } from '../../../../theme/colors';
-import { getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../../../theme';
+import { colors } from '@/theme/colors';
+import { getResponsiveSpacing, getResponsiveFontSize, Layout } from '@/theme';
 
 // Import types
 import type { LoadingProps, LoadingStyles } from './Loading.types';

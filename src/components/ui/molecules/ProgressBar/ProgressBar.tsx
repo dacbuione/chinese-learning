@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { TranslationText } from '../../atoms/Text';
-import { colors, Layout, getResponsiveSpacing } from '../../../../theme';
+import { colors, Layout, getResponsiveSpacing } from '@/theme';
 import { ProgressBarProps } from './ProgressBar.types';
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({

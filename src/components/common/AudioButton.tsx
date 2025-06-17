@@ -1,8 +1,8 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, getResponsiveSpacing } from '../../theme';
-import { useVocabularyTTS, usePronunciationTTS } from '../../hooks/useTTS';
+import { colors, getResponsiveSpacing } from '@/theme';
+import { useVocabularyTTS, usePronunciationTTS } from '@/hooks/useTTS';
 
 /**
  * 🎵 AudioButton Component

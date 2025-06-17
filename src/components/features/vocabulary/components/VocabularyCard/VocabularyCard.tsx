@@ -1,25 +1,31 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Card } from '../../../../ui/atoms/Card';
-import { ChineseText, PinyinText, TranslationText } from '../../../../ui/atoms/Text';
-import { Button } from '../../../../ui/atoms/Button';
-import { colors, Layout, getResponsiveSpacing } from '../../../../../theme';
-import { VocabularyItem } from '../../types/vocabulary.types';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Vibration } from 'react-native';
+import { Card } from '@/ui/atoms/Card';
+import { ChineseText, PinyinText, TranslationText } from '@/ui/atoms/Text';
+import { Button } from '@/ui/atoms/Button';
+import { colors, Layout, getResponsiveSpacing } from '@/theme';
+import { VocabularyItem } from '@/types/vocabulary.types';
 import { Volume2, Heart, BookOpen } from 'lucide-react-native';
-import { useVocabularyTTS } from '../../../../../hooks/useTTS';
+import { useVocabularyTTS } from '@/hooks/useTTS';
 
 interface VocabularyCardProps {
   vocabulary: VocabularyItem;
   onPress?: (vocabulary: VocabularyItem) => void;
   onAudioPress?: (audioUrl: string) => void;
   onToggleFavorite?: (id: string) => void;
+  onAnswer?: (isCorrect: boolean, responseTime: number) => void;
   variant?: 'default' | 'compact' | 'quiz' | 'practice';
   showProgress?: boolean;
   isFavorite?: boolean;
+  autoReveal?: boolean;
+  hideTranslations?: boolean;
+  mode?: 'study' | 'practice' | 'review';
   progress?: {
     correct: number;
     total: number;
     streak: number;
+    masteryLevel?: 'new' | 'learning' | 'review' | 'mastered';
+    difficulty?: 'easy' | 'medium' | 'hard' | 'very_hard';
   };
 }
 
@@ -28,13 +34,29 @@ export const VocabularyCard: React.FC<VocabularyCardProps> = ({
   onPress,
   onAudioPress,
   onToggleFavorite,
+  onAnswer,
   variant = 'default',
   showProgress = false,
   isFavorite = false,
+  autoReveal = false,
+  hideTranslations = false,
+  mode = 'study',
   progress,
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showStrokeOrder, setShowStrokeOrder] = useState(false);
+  const [startTime, setStartTime] = useState<number>(Date.now());
+  const [flipAnimation] = useState(new Animated.Value(0));
+
+  // Auto-reveal for study mode
+  useEffect(() => {
+    if (autoReveal && mode === 'study') {
+      const timer = setTimeout(() => {
+        handleFlip();
+      }, 2000); // Auto reveal after 2 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [autoReveal, mode]);
 
   // TTS Hook
   const {
@@ -68,19 +90,71 @@ export const VocabularyCard: React.FC<VocabularyCardProps> = ({
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'beginner': return colors.accent[500];
-      case 'intermediate': return colors.warning[500];
-      case 'advanced': return colors.error[500];
+      case 'beginner': 
+      case 'easy': return colors.accent[500];
+      case 'intermediate': 
+      case 'medium': return colors.warning[500];
+      case 'advanced': 
+      case 'hard': return colors.error[500];
+      case 'very_hard': return colors.error[600];
       default: return colors.neutral[500];
     }
   };
 
+  const getMasteryIcon = () => {
+    if (!progress?.masteryLevel) return 'help-circle-outline';
+    
+    switch (progress.masteryLevel) {
+      case 'new': return 'add-circle-outline';
+      case 'learning': return 'school-outline';
+      case 'review': return 'refresh-outline';
+      case 'mastered': return 'checkmark-circle';
+      default: return 'help-circle-outline';
+    }
+  };
+
+  const getMasteryColor = () => {
+    if (!progress?.masteryLevel) return colors.neutral[400];
+    
+    switch (progress.masteryLevel) {
+      case 'new': return colors.primary[500];
+      case 'learning': return colors.warning[500];
+      case 'review': return colors.secondary[500];
+      case 'mastered': return colors.success[500];
+      default: return colors.neutral[400];
+    }
+  };
+
+  const handleFlip = () => {
+    setIsFlipped(!isFlipped);
+    
+    Animated.timing(flipAnimation, {
+      toValue: isFlipped ? 0 : 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const handleCardPress = () => {
     if (variant === 'quiz' || variant === 'practice') {
-      setIsFlipped(!isFlipped);
+      handleFlip();
     } else {
       onPress?.(vocabulary);
     }
+  };
+
+  const handleAnswer = (isCorrect: boolean) => {
+    const responseTime = Date.now() - startTime;
+    
+    // Haptic feedback
+    if (isCorrect) {
+      Vibration.vibrate(50); // Short success vibration
+    } else {
+      Vibration.vibrate([0, 100, 50, 100]); // Double vibration for error
+    }
+    
+    onAnswer?.(isCorrect, responseTime);
+    setStartTime(Date.now()); // Reset timer for next word
   };
 
   const handleAudioPress = async () => {

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { WritingCharacter, WritingSession, WritingProgress, StrokePath } from '../../components/features/writing/types/writing.types';
-import { WritingService } from '../../services/writingService';
+import { WritingService } from '@/services/writingService';
 
 // State interface
 interface WritingState {

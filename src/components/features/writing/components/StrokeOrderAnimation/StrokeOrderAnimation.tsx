@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { Svg, Path, G, Circle } from 'react-native-svg';
-import { Card } from '../../../../ui/atoms/Card';
-import { TranslationText } from '../../../../ui/atoms/Text';
-import { Button } from '../../../../ui/atoms/Button';
-import { colors, Layout, getResponsiveSpacing, getResponsiveFontSize } from '../../../../../theme';
+import { Card } from '@/ui/atoms/Card';
+import { TranslationText } from '@/ui/atoms/Text';
+import { Button } from '@/ui/atoms/Button';
+import { colors, Layout, getResponsiveSpacing, getResponsiveFontSize } from '@/theme';
 import { Play, Pause, RotateCcw, Eye, EyeOff } from 'lucide-react-native';
 
 interface StrokeAnimationData {

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { Card } from '../../../../ui/atoms/Card';
+import { Card } from '../../../../ui/atoms/Card/Card';
 import { ChineseText, PinyinText, TranslationText } from '../../../../ui/atoms/Text';
-import { Button } from '../../../../ui/atoms/Button';
-import { colors, Layout, getResponsiveSpacing } from '../../../../../theme';
-import { ToneExample, TonePracticeProps } from '../../types/pronunciation.types';
+import { Button } from '../../../../ui/atoms/Button/Button';
+import { colors, Layout, getResponsiveSpacing } from '../../../../../../src/theme';
+import { ToneExample, TonePracticeProps } from '@/types/pronunciation.types';
 import { Volume2, Check, X, RefreshCw, Headphones } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useVocabularyTTS } from '../../../../../hooks/useTTS';
+import { useVocabularyTTS } from '@/hooks/useTTS';
 
 export const TonePractice: React.FC<TonePracticeProps> = ({
   examples,
@@ -159,7 +159,7 @@ export const TonePractice: React.FC<TonePracticeProps> = ({
         await stopTTS();
       } else {
         await speakVocabulary({
-          simplified: currentExample.character,
+          simplified: currentExample.hanzi,
           pinyin: currentExample.pinyin,
           tone: currentExample.tone,
         });
@@ -187,7 +187,7 @@ export const TonePractice: React.FC<TonePracticeProps> = ({
     <Card variant="default" style={styles.compactContainer}>
       <View style={styles.compactHeader}>
         <ChineseText size="4xl" tone={currentExample.tone}>
-          {currentExample.character}
+          {currentExample.hanzi}
         </ChineseText>
         <Button 
           variant="ghost" 
@@ -319,7 +319,7 @@ export const TonePractice: React.FC<TonePracticeProps> = ({
         
         <View style={styles.characterContainer}>
           <ChineseText size="7xl" tone={currentExample.tone} style={styles.character}>
-            {currentExample.character}
+            {currentExample.hanzi}
           </ChineseText>
           
           <View style={styles.audioControls}>

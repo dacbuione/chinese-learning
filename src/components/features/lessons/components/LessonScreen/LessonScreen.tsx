@@ -33,19 +33,19 @@ import Animated, {
 } from 'react-native-reanimated';
 
 // Import UI components
-import { Button } from '../../../../ui/atoms/Button';
-import { Card } from '../../../../ui/atoms/Card';
-import { ProgressBar } from '../../../../ui/molecules/ProgressBar';
-import { AudioPlayer } from '../../../../ui/molecules/AudioPlayer';
+import { Button } from '@/ui/atoms/Button';
+import { Card } from '@/ui/atoms/Card';
+import { ProgressBar } from '@/ui/molecules/ProgressBar';
+import { AudioPlayer } from '@/ui/molecules/AudioPlayer';
 
 // Import services and types
-import { lessonService, Lesson, Exercise, ChineseCharacter } from '../../../../../services/LessonService';
-import { useVocabularyTTS } from '../../../../../hooks/useTTS';
+import { lessonService, Lesson, Exercise, ChineseCharacter } from '@/services/LessonService';
+import { useVocabularyTTS } from '@/hooks/useTTS';
 
 // Import theme
-import { colors } from '../../../../../theme/colors';
-import { typography } from '../../../../../theme/typography';
-import { getResponsiveSpacing, getResponsiveFontSize, device } from '../../../../../theme';
+import { colors } from '@/theme/colors';
+import { typography } from '@/theme/typography';
+import { getResponsiveSpacing, getResponsiveFontSize, device } from '@/theme';
 
 const { width: screenWidth } = Dimensions.get('window');
 

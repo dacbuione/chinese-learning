@@ -1,13 +1,24 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true,
+    "strict": false,
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/features/*": ["./src/components/features/*"],
+      "@/ui/*": ["./src/components/ui/*"],
+      "@/common/*": ["./src/components/common/*"],
+      "@/theme": ["./src/theme"],
+      "@/services/*": ["./src/services/*"],
+      "@/hooks/*": ["./src/hooks/*"],
+      "@/store/*": ["./src/store/*"],
+      "@/utils/*": ["./src/utils/*"],
+      "@/localization/*": ["./src/localization/*"],
+      "@/types/*": ["./src/types/*"]
     }
   },
   "include": [

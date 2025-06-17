@@ -11,7 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 // Import theme and localization
 import { colors } from '../src/theme';
 import { I18nProvider } from '../src/localization';
-import { store } from '../src/store/index';
+import { store } from '../src/store';
 
 // Keep splash screen visible while loading
 SplashScreen.preventAutoHideAsync();

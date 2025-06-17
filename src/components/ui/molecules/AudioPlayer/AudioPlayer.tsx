@@ -3,8 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence } from 'react-native-reanimated';
 
 // Import theme
-import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '../../../../theme';
-import { useLessonTTS } from '../../../../hooks/useTTS';
+import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '@/theme';
+import { useLessonTTS } from '@/hooks/useTTS';
 
 // Simple AudioPlayer Props
 interface SimpleAudioPlayerProps {

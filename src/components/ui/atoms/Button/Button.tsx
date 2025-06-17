@@ -19,9 +19,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 // Import theme and utilities
-import { colors } from '../../../../theme/colors';
-import { getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../../../theme';
-import { useTranslation } from '../../../../localization';
+import { colors } from '@/theme/colors';
+import { getResponsiveSpacing, getResponsiveFontSize, Layout } from '@/theme';
+import { useTranslation } from '@/localization';
 
 // Import types
 import type { 
