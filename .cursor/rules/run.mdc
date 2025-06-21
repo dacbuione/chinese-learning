@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- đảm bảo luôn chạy ở port 8081. kill port 8081 nếu đã được chạy 

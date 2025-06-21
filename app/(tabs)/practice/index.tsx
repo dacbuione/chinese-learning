@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '../../../src/theme';
 import { useTranslation } from '../../../src/localization';
 import { Card } from '../../../src/components/ui/atoms/Card';
+import { api } from '../../../src/services/api/client';
 
 interface PracticeMode {
   id: string;
@@ -33,8 +35,41 @@ export default function PracticeScreen() {
   const { t, learning } = useTranslation();
   const router = useRouter();
   const [selectedDifficulty, setSelectedDifficulty] = useState<'all' | 'easy' | 'medium' | 'hard'>('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [vocabularyCount, setVocabularyCount] = useState(0);
+  const [lessonsCount, setLessonsCount] = useState(0);
 
-  // Mock practice modes data
+  // Load practice data from API
+  useEffect(() => {
+    loadPracticeData();
+  }, []);
+
+  const loadPracticeData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Load vocabulary and lessons count from API
+      const [vocabularyResponse, lessonsResponse] = await Promise.all([
+        api.vocabulary.getAll(),
+        api.lessons.getAll(),
+      ]);
+
+      if (vocabularyResponse.success && vocabularyResponse.data) {
+        setVocabularyCount(vocabularyResponse.data.length);
+      }
+
+      if (lessonsResponse.success && lessonsResponse.data) {
+        setLessonsCount(lessonsResponse.data.length);
+      }
+    } catch (error) {
+      console.error('Error loading practice data:', error);
+      Alert.alert('Lỗi', 'Không thể tải dữ liệu luyện tập. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Practice modes with dynamic data
   const practiceModes: PracticeMode[] = [
     {
       id: 'pronunciation',
@@ -46,7 +81,7 @@ export default function PracticeScreen() {
       difficulty: 'medium',
       estimatedTime: 10,
       completed: 15,
-      total: 20,
+      total: Math.max(20, vocabularyCount),
     },
     {
       id: 'vocabulary',
@@ -58,7 +93,7 @@ export default function PracticeScreen() {
       difficulty: 'easy',
       estimatedTime: 8,
       completed: 25,
-      total: 30,
+      total: vocabularyCount,
     },
     {
       id: 'tones',
@@ -106,7 +141,7 @@ export default function PracticeScreen() {
       difficulty: 'hard',
       estimatedTime: 25,
       completed: 2,
-      total: 8,
+      total: lessonsCount,
     },
   ];
 
@@ -316,6 +351,17 @@ export default function PracticeScreen() {
       </Card>
     </View>
   );
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Đang tải dữ liệu luyện tập...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -594,5 +640,18 @@ const styles = StyleSheet.create({
   // Bottom spacing
   bottomSpacing: {
     height: getResponsiveSpacing('xl'),
+  },
+  
+  // Loading state
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSpacing('lg'),
+  },
+  loadingText: {
+    fontSize: getResponsiveFontSize('lg'),
+    color: colors.neutral[600],
+    textAlign: 'center',
   },
 }); 

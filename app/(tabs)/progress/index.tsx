@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,6 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '../../../src/theme';
 import { useTranslation } from '../../../src/localization';
 import { Card } from '../../../src/components/ui/atoms/Card';
+import { Loading } from '../../../src/components/ui/atoms/Loading';
+import { api } from '../../../src/services/api/client';
 
 interface WeeklyData {
   day: string;
@@ -40,90 +44,75 @@ interface Achievement {
   unlockedDate?: string;
 }
 
+interface OverallStats {
+  wordsLearned: number;
+  wordsThisWeek: number;
+  lessonsCompleted: number;
+  lessonsThisWeek: number;
+  accuracy: number;
+  accuracyImprovement: number;
+}
+
 export default function ProgressScreen() {
   const { t, learning } = useTranslation();
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('week');
+  
+  // API data states
+  const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
+  const [skillsProgress, setSkillsProgress] = useState<SkillProgress[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [overallStats, setOverallStats] = useState<OverallStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock weekly data
-  const weeklyData: WeeklyData[] = [
-    { day: 'Thứ 2', dayShort: 'T2', value: 25, completed: true },
-    { day: 'Thứ 3', dayShort: 'T3', value: 30, completed: true },
-    { day: 'Thứ 4', dayShort: 'T4', value: 20, completed: true },
-    { day: 'Thứ 5', dayShort: 'T5', value: 35, completed: true },
-    { day: 'Thứ 6', dayShort: 'T6', value: 40, completed: true },
-    { day: 'Thứ 7', dayShort: 'T7', value: 15, completed: false },
-    { day: 'Chủ nhật', dayShort: 'CN', value: 0, completed: false },
-  ];
+  // Load progress data from API
+  useEffect(() => {
+    loadProgressData();
+  }, []);
 
-  // Mock skill progress
-  const skillsProgress: SkillProgress[] = [
-    {
-      skill: 'Từ vựng',
-      icon: 'book-outline',
-      level: 3,
-      progress: 75,
-      color: colors.primary[500],
-    },
-    {
-      skill: 'Phát âm',
-      icon: 'mic-outline',
-      level: 2,
-      progress: 60,
-      color: colors.secondary[500],
-    },
-    {
-      skill: 'Viết chữ',
-      icon: 'brush-outline',
-      level: 2,
-      progress: 40,
-      color: colors.accent[500],
-    },
-    {
-      skill: 'Ngữ pháp',
-      icon: 'library-outline',
-      level: 1,
-      progress: 85,
-      color: colors.warning[500],
-    },
-  ];
+  const loadProgressData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // For now, use a mock user ID (in real app, get from auth context)
+      const userId = 'user-1';
+      
+      // Load all progress data in parallel
+      const [weeklyResponse, skillsResponse, achievementsResponse, statsResponse] = await Promise.all([
+        api.progress.getWeeklyProgress(userId),
+        api.progress.getSkillsProgress(userId),
+        api.progress.getAchievements(userId),
+        api.progress.getOverallStats(userId),
+      ]);
 
-  // Mock achievements
-  const achievements: Achievement[] = [
-    {
-      id: '1',
-      title: 'Bước đầu tiên',
-      description: 'Hoàn thành bài học đầu tiên',
-      icon: 'star',
-      color: colors.warning[500],
-      unlocked: true,
-      unlockedDate: '2 ngày trước',
-    },
-    {
-      id: '2',
-      title: 'Người kiên trì',
-      description: 'Học 7 ngày liên tiếp',
-      icon: 'flame',
-      color: colors.error[500],
-      unlocked: true,
-      unlockedDate: '1 ngày trước',
-    },
-    {
-      id: '3',
-      title: 'Chuyên gia từ vựng',
-      description: 'Học 100 từ vựng',
-      icon: 'library',
-      color: colors.primary[500],
-      unlocked: false,
-    },
-    {
-      id: '4',
-      title: 'Thạc sĩ phát âm',
-      description: 'Đạt 90% độ chính xác phát âm',
-      icon: 'mic',
-      color: colors.secondary[500],
-      unlocked: false,
-    },
-  ];
+      if (weeklyResponse.success && weeklyResponse.data) {
+        setWeeklyData(weeklyResponse.data);
+      }
+
+      if (skillsResponse.success && skillsResponse.data) {
+        setSkillsProgress(skillsResponse.data);
+      }
+
+      if (achievementsResponse.success && achievementsResponse.data) {
+        setAchievements(achievementsResponse.data);
+      }
+
+      if (statsResponse.success && statsResponse.data) {
+        setOverallStats(statsResponse.data);
+      }
+
+    } catch (error) {
+      console.error('Error loading progress data:', error);
+      Alert.alert('Lỗi', 'Không thể tải dữ liệu tiến độ. Vui lòng thử lại.');
+      
+      // Set empty fallback data
+      setWeeklyData([]);
+      setSkillsProgress([]);
+      setAchievements([]);
+      setOverallStats(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const periods = [
     { id: 'week', label: 'Tuần' },
@@ -143,25 +132,25 @@ export default function ProgressScreen() {
       <Card style={styles.statsCard}>
         <View style={styles.statsGrid}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>247</Text>
+            <Text style={styles.statValue}>{overallStats?.wordsLearned || 0}</Text>
             <Text style={styles.statLabel}>Từ đã học</Text>
-            <Text style={styles.statChange}>+12 tuần này</Text>
+            <Text style={styles.statChange}>+{overallStats?.wordsThisWeek || 0} tuần này</Text>
           </View>
           
           <View style={styles.statDivider} />
           
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>18</Text>
+            <Text style={styles.statValue}>{overallStats?.lessonsCompleted || 0}</Text>
             <Text style={styles.statLabel}>Bài hoàn thành</Text>
-            <Text style={styles.statChange}>+3 tuần này</Text>
+            <Text style={styles.statChange}>+{overallStats?.lessonsThisWeek || 0} tuần này</Text>
           </View>
           
           <View style={styles.statDivider} />
           
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>87%</Text>
+            <Text style={styles.statValue}>{Math.round(overallStats?.accuracy || 0)}%</Text>
             <Text style={styles.statLabel}>Độ chính xác</Text>
-            <Text style={styles.statChange}>+5% cải thiện</Text>
+            <Text style={styles.statChange}>+{overallStats?.accuracyImprovement || 0}% cải thiện</Text>
           </View>
         </View>
       </Card>
@@ -334,6 +323,38 @@ export default function ProgressScreen() {
       </View>
     </View>
   );
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {renderHeader()}
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary[500]} />
+          <Text style={styles.loadingText}>Đang tải dữ liệu tiến độ...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show empty state if no data
+  if (!weeklyData.length && !skillsProgress.length && !achievements.length) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {renderHeader()}
+        <View style={styles.emptyContainer}>
+          <Ionicons name="analytics-outline" size={64} color={colors.neutral[400]} />
+          <Text style={styles.emptyTitle}>Chưa có dữ liệu tiến độ</Text>
+          <Text style={styles.emptySubtitle}>
+            Bắt đầu học để xem tiến độ của bạn ở đây
+          </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadProgressData}>
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -652,5 +673,53 @@ const styles = StyleSheet.create({
   // Bottom spacing
   bottomSpacing: {
     height: getResponsiveSpacing('xl'),
+  },
+
+  // Loading states
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSpacing('lg'),
+  },
+  loadingText: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[600],
+    marginTop: getResponsiveSpacing('md'),
+    textAlign: 'center',
+  },
+
+  // Empty states
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSpacing('lg'),
+  },
+  emptyTitle: {
+    fontSize: getResponsiveFontSize('xl'),
+    fontWeight: '600',
+    color: colors.neutral[700],
+    marginTop: getResponsiveSpacing('lg'),
+    marginBottom: getResponsiveSpacing('sm'),
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[500],
+    textAlign: 'center',
+    marginBottom: getResponsiveSpacing('xl'),
+    lineHeight: 22,
+  },
+  retryButton: {
+    backgroundColor: colors.primary[500],
+    paddingHorizontal: getResponsiveSpacing('xl'),
+    paddingVertical: getResponsiveSpacing('md'),
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    fontSize: getResponsiveFontSize('base'),
+    fontWeight: '600',
+    color: colors.neutral[50],
   },
 });

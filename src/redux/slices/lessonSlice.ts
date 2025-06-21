@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { api, Lesson } from '../../services/api/client';
 
 interface VocabularyItem {
   id: string;
@@ -60,262 +61,238 @@ interface Course {
   image?: string;
 }
 
-interface LessonState {
-  courses: Course[];
-  currentLesson: Lesson | null;
-  lessonProgress: { [lessonId: string]: number };
-  favorites: string[];
+// Types
+export interface LessonProgress {
+  lessonId: string;
+  progress: number;
+  completed: boolean;
+  score?: number;
+  lastAccessed?: Date;
 }
 
+export interface LessonState {
+  lessons: Lesson[];
+  currentLesson: Lesson | null;
+  progress: Record<string, LessonProgress>;
+  favorites: string[];
+  isLoading: boolean;
+  error: string | null;
+  filters: {
+    difficulty?: string;
+    type?: string;
+    search?: string;
+  };
+}
+
+// Initial state
 const initialState: LessonState = {
-  courses: [
-    {
-      id: 'hsk1',
-      title: 'HSK Level 1',
-      description: '150 từ cơ bản và cấu trúc câu đơn giản',
-      level: 'Beginner',
-      totalLessons: 15,
-      completedLessons: 3,
-      progress: 20,
-      color: '#DC2626',
-    },
-    {
-      id: 'hsk2',
-      title: 'HSK Level 2',
-      description: '300 từ và cấu trúc ngữ pháp cơ bản',
-      level: 'Beginner',
-      totalLessons: 20,
-      completedLessons: 0,
-      progress: 0,
-      color: '#F59E0B',
-    },
-    {
-      id: 'conversation',
-      title: 'Hội thoại hàng ngày',
-      description: 'Các cụm từ thực tế cho các tình huống hàng ngày',
-      level: 'Intermediate',
-      totalLessons: 12,
-      completedLessons: 1,
-      progress: 8,
-      color: '#1E40AF',
-    },
-    {
-      id: 'tones',
-      title: 'Luyện thanh điệu',
-      description: 'Thực hành 4 thanh điệu cơ bản trong tiếng Trung',
-      level: 'Beginner',
-      totalLessons: 8,
-      completedLessons: 0,
-      progress: 0,
-      color: '#7C3AED',
-    },
-  ],
-  currentLesson: {
-    id: 'hsk1-lesson-1',
-    title: 'Chào hỏi và Giới thiệu',
-    description: 'Học cách chào hỏi cơ bản và giới thiệu bản thân',
-    courseId: 'hsk1',
-    type: 'vocabulary',
-    difficulty: 'beginner',
-    estimatedTime: 20,
-    completed: false,
-    vocabulary: [
-      {
-        id: 'v1',
-        hanzi: '你好',
-        pinyin: 'nǐ hǎo',
-        english: 'xin chào',
-        tone: 3,
-        difficulty: 'easy',
-        category: 'greetings',
-        strokeOrder: ['丿', '亻', '一', '乚', '丿', '一', '丨'],
-      },
-      {
-        id: 'v2',
-        hanzi: '再见',
-        pinyin: 'zài jiàn',
-        english: 'tạm biệt',
-        tone: 4,
-        difficulty: 'easy',
-        category: 'greetings',
-        strokeOrder: ['一', '丨', '一', '丨', '一', '乚'],
-      },
-      {
-        id: 'v3',
-        hanzi: '谢谢',
-        pinyin: 'xiè xie',
-        english: 'cảm ơn',
-        tone: 4,
-        difficulty: 'easy',
-        category: 'greetings',
-        strokeOrder: ['丶', '一', '丨', '一', '丿', '乚', '丨'],
-      },
-      {
-        id: 'v4',
-        hanzi: '我',
-        pinyin: 'wǒ',
-        english: 'tôi',
-        tone: 3,
-        difficulty: 'easy',
-        category: 'pronouns',
-        strokeOrder: ['丿', '一', '丨', '一', '丨', '丿', '丶'],
-      },
-      {
-        id: 'v5',
-        hanzi: '你',
-        pinyin: 'nǐ',
-        english: 'bạn',
-        tone: 3,
-        difficulty: 'easy',
-        category: 'pronouns',
-        strokeOrder: ['丿', '亻', '一', '乚', '丿'],
-      },
-      {
-        id: 'v6',
-        hanzi: '是',
-        pinyin: 'shì',
-        english: 'là',
-        tone: 4,
-        difficulty: 'easy',
-        category: 'verbs',
-        strokeOrder: ['丨', '一', '一', '一', '一', '丨', '一', '丨', '一'],
-      },
-      {
-        id: 'v7',
-        hanzi: '不是',
-        pinyin: 'bù shì',
-        english: 'không phải là',
-        tone: 4,
-        difficulty: 'medium',
-        category: 'verbs',
-        strokeOrder: ['一', '丿', '丨', '丶'],
-      },
-    ],
-    grammar: [
-      {
-        id: 'g1',
-        title: 'Cấu trúc Chủ ngữ-Động từ cơ bản',
-        explanation: 'Tiếng Trung theo thứ tự từ Chủ ngữ-Động từ-Tân ngữ (SVO), tương tự như tiếng Anh.',
-        examples: [
-          {
-            chinese: '我是学生',
-            pinyin: 'wǒ shì xuéshēng',
-            english: 'Tôi là học sinh',
-          },
-          {
-            chinese: '你好吗？',
-            pinyin: 'nǐ hǎo ma?',
-            english: 'Bạn có khỏe không?',
-          },
-        ],
-      },
-      {
-        id: 'g2',
-        title: 'Phủ định với 不 (bù)',
-        explanation: '不 (bù) được sử dụng để phủ định động từ và tính từ.',
-        examples: [
-          {
-            chinese: '我不是老师',
-            pinyin: 'wǒ bù shì lǎoshī',
-            english: 'Tôi không phải là giáo viên',
-          },
-          {
-            chinese: '他不好',
-            pinyin: 'tā bù hǎo',
-            english: 'Anh ấy không ổn',
-          },
-        ],
-      },
-    ],
-    quiz: [
-      {
-        id: 'q1',
-        type: 'multiple-choice',
-        question: 'Cách nói "xin chào" trong tiếng Trung là gì?',
-        options: ['你好', '再见', '谢谢', '对不起'],
-        correctAnswer: '你好',
-        explanation: '你好 (nǐ hǎo) là cách phổ biến nhất để nói xin chào trong tiếng Trung.',
-      },
-      {
-        id: 'q2',
-        type: 'multiple-choice',
-        question: '"谢谢" có nghĩa là gì?',
-        options: ['Xin chào', 'Tạm biệt', 'Cảm ơn', 'Xin lỗi'],
-        correctAnswer: 'Cảm ơn',
-        explanation: '谢谢 (xiè xie) có nghĩa là cảm ơn trong tiếng Trung.',
-      },
-      {
-        id: 'q3',
-        type: 'tone-recognition',
-        question: 'Chọn thanh điệu đúng cho từ "你"',
-        options: ['第一声', '第二声', '第三声', '第四声'],
-        correctAnswer: '第三声',
-        explanation: '"你" (nǐ) được phát âm với thanh điệu thứ 3.',
-      },
-      {
-        id: 'q4',
-        type: 'stroke-order',
-        question: 'Sắp xếp thứ tự nét cho chữ "我"',
-        options: ['丿一丨一丨丿丶', '一丿丨一丨丿丶', '丿丨一一丨丿丶'],
-        correctAnswer: '丿一丨一丨丿丶',
-        explanation: 'Thứ tự nét đúng cho "我" là từ trái sang phải, từ trên xuống dưới.',
-      },
-    ],
-  },
-  lessonProgress: {},
+  lessons: [],
+  currentLesson: null,
+  progress: {},
   favorites: [],
+  isLoading: false,
+  error: null,
+  filters: {},
 };
 
+// Async thunks
+export const fetchLessons = createAsyncThunk(
+  'lessons/fetchLessons',
+  async (difficulty?: string, { rejectWithValue }) => {
+    try {
+      const response = await api.lessons.getAll(difficulty);
+      
+      if (!response.success) {
+        return rejectWithValue(response.error || 'Không thể tải bài học');
+      }
+
+      return response.data || [];
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Lỗi không xác định');
+    }
+  }
+);
+
+export const fetchLessonById = createAsyncThunk(
+  'lessons/fetchLessonById',
+  async (lessonId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.lessons.getById(lessonId);
+      
+      if (!response.success) {
+        return rejectWithValue(response.error || 'Không thể tải bài học');
+      }
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Lỗi không xác định');
+    }
+  }
+);
+
+// Slice
 const lessonSlice = createSlice({
-  name: 'lesson',
+  name: 'lessons',
   initialState,
   reducers: {
-    setCurrentLesson: (state, action: PayloadAction<Lesson>) => {
+    clearError: (state) => {
+      state.error = null;
+    },
+    setCurrentLesson: (state, action: PayloadAction<Lesson | null>) => {
       state.currentLesson = action.payload;
     },
-    updateLessonProgress: (state, action: PayloadAction<{ lessonId: string; progress: number }>) => {
-      state.lessonProgress[action.payload.lessonId] = action.payload.progress;
+    updateProgress: (state, action: PayloadAction<LessonProgress>) => {
+      const { lessonId } = action.payload;
+      state.progress[lessonId] = {
+        ...state.progress[lessonId],
+        ...action.payload,
+        lastAccessed: new Date(),
+      };
     },
-    markLessonComplete: (state, action: PayloadAction<{ lessonId: string; score: number }>) => {
-      if (state.currentLesson && state.currentLesson.id === action.payload.lessonId) {
-        state.currentLesson.completed = true;
-        state.currentLesson.score = action.payload.score;
+    markLessonComplete: (state, action: PayloadAction<string>) => {
+      const lessonId = action.payload;
+      if (state.progress[lessonId]) {
+        state.progress[lessonId].completed = true;
+        state.progress[lessonId].progress = 100;
+      } else {
+        state.progress[lessonId] = {
+          lessonId,
+          progress: 100,
+          completed: true,
+          lastAccessed: new Date(),
+        };
       }
-      // Update course progress
-      const courseId = state.currentLesson?.courseId;
-      if (courseId) {
-        const course = state.courses.find(c => c.id === courseId);
-        if (course) {
-          course.completedLessons += 1;
-          course.progress = (course.completedLessons / course.totalLessons) * 100;
-        }
+    },
+    toggleFavorite: (state, action: PayloadAction<string>) => {
+      const lessonId = action.payload;
+      const index = state.favorites.indexOf(lessonId);
+      if (index > -1) {
+        state.favorites.splice(index, 1);
+      } else {
+        state.favorites.push(lessonId);
       }
     },
-    addToFavorites: (state, action: PayloadAction<string>) => {
-      if (!state.favorites.includes(action.payload)) {
-        state.favorites.push(action.payload);
-      }
+    setFilters: (state, action: PayloadAction<Partial<LessonState['filters']>>) => {
+      state.filters = { ...state.filters, ...action.payload };
     },
-    removeFromFavorites: (state, action: PayloadAction<string>) => {
-      state.favorites = state.favorites.filter(id => id !== action.payload);
+    clearFilters: (state) => {
+      state.filters = {};
     },
-    resetProgress: (state) => {
-      state.lessonProgress = {};
-      state.courses.forEach(course => {
-        course.completedLessons = 0;
-        course.progress = 0;
+    resetLessonState: (state) => {
+      state.lessons = [];
+      state.currentLesson = null;
+      state.error = null;
+    },
+  },
+  extraReducers: (builder) => {
+    // Fetch lessons
+    builder
+      .addCase(fetchLessons.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchLessons.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.lessons = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchLessons.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
       });
-    },
+
+    // Fetch lesson by ID
+    builder
+      .addCase(fetchLessonById.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchLessonById.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.currentLesson = action.payload;
+        state.error = null;
+
+        // Update lessons array if lesson exists
+        const existingIndex = state.lessons.findIndex(l => l.id === action.payload.id);
+        if (existingIndex > -1) {
+          state.lessons[existingIndex] = action.payload;
+        }
+      })
+      .addCase(fetchLessonById.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
   },
 });
 
 export const {
+  clearError,
   setCurrentLesson,
-  updateLessonProgress,
+  updateProgress,
   markLessonComplete,
-  addToFavorites,
-  removeFromFavorites,
-  resetProgress,
+  toggleFavorite,
+  setFilters,
+  clearFilters,
+  resetLessonState,
 } = lessonSlice.actions;
+
+// Selectors
+export const selectLessons = (state: { lessons: LessonState }) => state.lessons.lessons;
+export const selectCurrentLesson = (state: { lessons: LessonState }) => state.lessons.currentLesson;
+export const selectLessonProgress = (state: { lessons: LessonState }) => state.lessons.progress;
+export const selectFavoriteLessons = (state: { lessons: LessonState }) => state.lessons.favorites;
+export const selectLessonIsLoading = (state: { lessons: LessonState }) => state.lessons.isLoading;
+export const selectLessonError = (state: { lessons: LessonState }) => state.lessons.error;
+export const selectLessonFilters = (state: { lessons: LessonState }) => state.lessons.filters;
+
+// Computed selectors
+export const selectFilteredLessons = (state: { lessons: LessonState }) => {
+  const { lessons, filters } = state.lessons;
+  let filtered = [...lessons];
+
+  if (filters.difficulty) {
+    filtered = filtered.filter(lesson => lesson.difficulty === filters.difficulty);
+  }
+
+  if (filters.type) {
+    filtered = filtered.filter(lesson => lesson.type === filters.type);
+  }
+
+  if (filters.search) {
+    const searchTerm = filters.search.toLowerCase();
+    filtered = filtered.filter(lesson => 
+      lesson.title.toLowerCase().includes(searchTerm) ||
+      lesson.titleVi.toLowerCase().includes(searchTerm) ||
+      lesson.description.toLowerCase().includes(searchTerm) ||
+      lesson.descriptionVi.toLowerCase().includes(searchTerm)
+    );
+  }
+
+  return filtered.sort((a, b) => a.order - b.order);
+};
+
+export const selectLessonById = (lessonId: string) => (state: { lessons: LessonState }) => {
+  return state.lessons.lessons.find(lesson => lesson.id === lessonId);
+};
+
+export const selectLessonProgressById = (lessonId: string) => (state: { lessons: LessonState }) => {
+  return state.lessons.progress[lessonId] || {
+    lessonId,
+    progress: 0,
+    completed: false,
+  };
+};
+
+export const selectCompletedLessons = (state: { lessons: LessonState }) => {
+  return Object.values(state.lessons.progress).filter(p => p.completed);
+};
+
+export const selectTotalXp = (state: { lessons: LessonState }) => {
+  const completedLessons = selectCompletedLessons(state);
+  return completedLessons.reduce((total, progress) => {
+    const lesson = state.lessons.lessons.find(l => l.id === progress.lessonId);
+    return total + (lesson?.xpReward || 0);
+  }, 0);
+};
 
 export default lessonSlice.reducer;

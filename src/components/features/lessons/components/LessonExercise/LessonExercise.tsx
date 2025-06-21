@@ -67,7 +67,8 @@ export interface ExerciseOption {
 }
 
 export interface LessonExerciseProps {
-  exercises: ExerciseData[];
+  lessonId?: string;
+  exercises?: ExerciseData[];
   onComplete: (score: number, totalQuestions: number) => void;
   onExerciseComplete?: (exerciseId: string, isCorrect: boolean) => void;
   showProgress?: boolean;
@@ -75,12 +76,15 @@ export interface LessonExerciseProps {
 }
 
 export const LessonExercise: React.FC<LessonExerciseProps> = ({
-  exercises,
+  lessonId,
+  exercises: propExercises,
   onComplete,
   onExerciseComplete,
   showProgress = true,
   allowReview = true,
 }) => {
+  const [exercises, setExercises] = useState<ExerciseData[]>(propExercises || []);
+  const [loading, setLoading] = useState(!propExercises && !!lessonId);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -103,7 +107,54 @@ export const LessonExercise: React.FC<LessonExerciseProps> = ({
   } = useVocabularyTTS();
 
   const currentExercise = exercises[currentIndex];
-  const progressPercentage = ((currentIndex + 1) / exercises.length) * 100;
+  const progressPercentage = exercises.length > 0 ? ((currentIndex + 1) / exercises.length) * 100 : 0;
+
+  // Fetch exercises from API if lessonId is provided
+  useEffect(() => {
+    if (lessonId && !propExercises) {
+      fetchExercisesFromAPI();
+    }
+  }, [lessonId]);
+
+  const fetchExercisesFromAPI = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:3000/api/v1/lessons/${lessonId}/exercises`);
+      const apiData = await response.json();
+      
+      // Transform API data to component format
+      const transformedExercises: ExerciseData[] = apiData.map((exercise: any) => ({
+        id: exercise.id,
+        type: exercise.type as ExerciseType,
+        question: exercise.question,
+        chineseText: exercise.chineseText,
+        pinyin: exercise.pinyin,
+        vietnameseText: exercise.vietnameseText,
+        englishText: exercise.englishText,
+        correctAnswer: exercise.correctAnswer,
+        options: exercise.options.map((option: any) => ({
+          id: option.id,
+          text: option.text,
+          chineseText: option.chineseText,
+          pinyin: option.pinyin,
+          vietnameseText: option.vietnameseText,
+          isCorrect: option.isCorrect,
+          tone: option.tone,
+        })),
+        audio: exercise.audioUrl,
+        explanation: exercise.explanationVi || exercise.explanation,
+        difficulty: exercise.difficulty as 'easy' | 'medium' | 'hard',
+        tone: exercise.tone,
+      }));
+      
+      setExercises(transformedExercises);
+    } catch (error) {
+      console.error('Error fetching exercises:', error);
+      Alert.alert('Lỗi', 'Không thể tải bài tập. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Update progress animation
   useEffect(() => {
@@ -975,6 +1026,31 @@ export const LessonExercise: React.FC<LessonExerciseProps> = ({
     }
   }, [isAnswered]);
 
+  // Loading state
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text style={styles.loadingText}>Đang tải bài tập...</Text>
+      </View>
+    );
+  }
+
+  // Empty state
+  if (exercises.length === 0) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text style={styles.emptyText}>Không có bài tập nào.</Text>
+        <Button
+          variant="primary"
+          onPress={() => onComplete(0, 0)}
+          style={{ marginTop: getResponsiveSpacing('lg') }}
+        >
+          Quay lại
+        </Button>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {showProgress && renderProgressBar()}
@@ -1529,5 +1605,21 @@ const styles = StyleSheet.create({
   wordOptionVietnamese: {
     fontSize: getResponsiveFontSize('base'),
     color: colors.neutral[900],
+  },
+  
+  // Loading and Empty States
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: getResponsiveFontSize('lg'),
+    color: colors.neutral[600],
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: getResponsiveFontSize('lg'),
+    color: colors.neutral[600],
+    textAlign: 'center',
   },
 }); 

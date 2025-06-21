@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,544 +34,789 @@ export interface UserProgress {
 export interface Achievement {
   id: string;
   title: string;
+  titleVi: string;
   description: string;
+  descriptionVi: string;
   icon: string;
-  isUnlocked: boolean;
-  unlockedDate?: string;
+  condition: string;
+  xpReward: number;
+  badgeColor: string;
+  unlocked: boolean;
+  unlockedAt?: Date;
   progress?: number;
-  target?: number;
+  maxProgress?: number;
+}
+
+export interface LessonStats {
+  totalXP: number;
+  currentLevel: number;
+  xpToNextLevel: number;
+  totalXPToNextLevel: number;
+  streak: number;
+  maxStreak: number;
+  lessonsCompleted: number;
+  exercisesCompleted: number;
+  accuracy: number;
+  timeSpent: number; // minutes
+  achievements: Achievement[];
+  rank: string;
+  leaderboardPosition?: number;
 }
 
 export interface LessonGameificationProps {
-  userProgress: UserProgress;
-  onStreakMaintain?: () => void;
-  onAchievementUnlock?: (achievement: Achievement) => void;
-  showCompactView?: boolean;
+  lessonId: string;
+  userId?: string;
+  onXPGained?: (xp: number, newLevel?: number) => void;
+  onAchievementUnlocked?: (achievement: Achievement) => void;
+  variant?: 'compact' | 'detailed' | 'floating';
+  showAnimations?: boolean;
 }
 
 export const LessonGameification: React.FC<LessonGameificationProps> = ({
-  userProgress,
-  onStreakMaintain,
-  onAchievementUnlock,
-  showCompactView = false,
+  lessonId,
+  userId = 'current-user',
+  onXPGained,
+  onAchievementUnlocked,
+  variant = 'detailed',
+  showAnimations = true,
 }) => {
-  const [streakAnimation] = useState(new Animated.Value(1));
-  const [pointsAnimation] = useState(new Animated.Value(0));
+  const [stats, setStats] = useState<LessonStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [newAchievements, setNewAchievements] = useState<Achievement[]>([]);
+  const [showXPAnimation, setShowXPAnimation] = useState(false);
+  const [recentXPGain, setRecentXPGain] = useState(0);
 
-  // Sample achievements data
-  const sampleAchievements: Achievement[] = [
+  // Animation values
+  const [xpBarAnimation] = useState(new Animated.Value(0));
+  const [achievementScale] = useState(new Animated.Value(0));
+  const [xpFloatAnimation] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    loadGameStats();
+  }, [lessonId, userId]);
+
+  const loadGameStats = async () => {
+    try {
+      setLoading(true);
+      // Mock API call - replace with real API
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const mockStats: LessonStats = {
+        totalXP: 1250,
+        currentLevel: 5,
+        xpToNextLevel: 250,
+        totalXPToNextLevel: 500,
+        streak: 7,
+        maxStreak: 12,
+        lessonsCompleted: 8,
+        exercisesCompleted: 45,
+        accuracy: 87,
+        timeSpent: 180,
+        rank: 'Advanced Learner',
+        leaderboardPosition: 23,
+        achievements: [
     {
       id: '1',
-      title: 'Người mới bắt đầu',
-      description: 'Hoàn thành bài học đầu tiên',
-      icon: '🌱',
-      isUnlocked: true,
-      unlockedDate: '2024-01-15',
+            title: 'First Steps',
+            titleVi: 'Những bước đầu',
+            description: 'Complete your first lesson',
+            descriptionVi: 'Hoàn thành bài học đầu tiên',
+            icon: '🎯',
+            condition: 'complete_lesson',
+            xpReward: 50,
+            badgeColor: '#10B981',
+            unlocked: true,
+            unlockedAt: new Date(),
     },
     {
       id: '2',
-      title: 'Học giả nhỏ',
-      description: 'Hoàn thành 10 bài học',
+            title: 'Vocabulary Master',
+            titleVi: 'Bậc thầy từ vựng',
+            description: 'Learn 100 Chinese words',
+            descriptionVi: 'Học 100 từ tiếng Trung',
       icon: '📚',
-      isUnlocked: userProgress.lessonsCompleted >= 10,
-      progress: userProgress.lessonsCompleted,
-      target: 10,
+            condition: 'learn_words_100',
+            xpReward: 200,
+            badgeColor: '#3B82F6',
+            unlocked: true,
+            progress: 78,
+            maxProgress: 100,
     },
     {
       id: '3',
       title: 'Streak Master',
-      description: 'Duy trì streak 7 ngày',
+            titleVi: 'Chuyên gia chuỗi ngày',
+            description: 'Study for 10 consecutive days',
+            descriptionVi: 'Học liên tục 10 ngày',
       icon: '🔥',
-      isUnlocked: userProgress.longestStreak >= 7,
-      progress: userProgress.currentStreak,
-      target: 7,
+            condition: 'streak_10',
+            xpReward: 300,
+            badgeColor: '#F59E0B',
+            unlocked: false,
+            progress: 7,
+            maxProgress: 10,
     },
     {
       id: '4',
-      title: 'Điểm số cao',
-      description: 'Đạt 1000 điểm',
+            title: 'Perfect Score',
+            titleVi: 'Điểm tuyệt đối',
+            description: 'Get 100% accuracy in a lesson',
+            descriptionVi: 'Đạt 100% độ chính xác trong bài học',
       icon: '⭐',
-      isUnlocked: userProgress.totalPoints >= 1000,
-      progress: userProgress.totalPoints,
-      target: 1000,
-    },
-    {
-      id: '5',
-      title: 'Nhà thám hiểm ngôn ngữ',
-      description: 'Học 50 từ vựng mới',
-      icon: '🗺️',
-      isUnlocked: false,
-      progress: 35,
-      target: 50,
-    },
-  ];
+            condition: 'perfect_lesson',
+            xpReward: 150,
+            badgeColor: '#DC2626',
+            unlocked: false,
+          },
+        ],
+      };
 
-  // Animate streak when it changes
-  useEffect(() => {
+      setStats(mockStats);
+      
+      // Animate XP bar
+      if (showAnimations) {
+        animateXPBar(mockStats.xpToNextLevel / mockStats.totalXPToNextLevel);
+      }
+    } catch (error) {
+      console.error('Error loading game stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const animateXPBar = (progress: number) => {
+    Animated.timing(xpBarAnimation, {
+      toValue: progress,
+      duration: 1500,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const animateAchievement = (achievement: Achievement) => {
+    setNewAchievements(prev => [...prev, achievement]);
+    
     Animated.sequence([
-      Animated.timing(streakAnimation, {
+      Animated.timing(achievementScale, {
         toValue: 1.2,
-        duration: 200,
+        duration: 300,
         useNativeDriver: true,
       }),
-      Animated.timing(streakAnimation, {
+      Animated.timing(achievementScale, {
         toValue: 1,
         duration: 200,
         useNativeDriver: true,
       }),
-    ]).start();
-  }, [userProgress.currentStreak]);
+    ]).start(() => {
+      // Remove achievement from new list after animation
+      setTimeout(() => {
+        setNewAchievements(prev => prev.filter(a => a.id !== achievement.id));
+      }, 3000);
+    });
+  };
 
-  // Animate points when they increase
-  useEffect(() => {
-    Animated.timing(pointsAnimation, {
-      toValue: userProgress.totalPoints,
-      duration: 500,
-      useNativeDriver: false,
-    }).start();
-  }, [userProgress.totalPoints]);
-
-  const getLevelInfo = () => {
-    const level = Math.floor(userProgress.experiencePoints / 100) + 1;
-    const currentLevelXP = userProgress.experiencePoints % 100;
-    const nextLevelXP = 100;
-    const progressPercentage = (currentLevelXP / nextLevelXP) * 100;
+  const animateXPGain = (xp: number) => {
+    setRecentXPGain(xp);
+    setShowXPAnimation(true);
     
-    return { level, currentLevelXP, nextLevelXP, progressPercentage };
+    Animated.sequence([
+      Animated.timing(xpFloatAnimation, {
+        toValue: -30,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(xpFloatAnimation, {
+        toValue: 0,
+        duration: 0,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowXPAnimation(false);
+    });
   };
 
-  const getDailyGoalProgress = () => {
-    return Math.min((userProgress.todayProgress / userProgress.dailyGoal) * 100, 100);
+  const getLevelColor = (level: number) => {
+    if (level <= 2) return colors.neutral[500];
+    if (level <= 5) return colors.secondary[500];
+    if (level <= 10) return colors.primary[500];
+    return colors.accent[500];
   };
 
-  const getStreakIcon = (streak: number) => {
-    if (streak >= 30) return '🏆';
-    if (streak >= 14) return '💎';
-    if (streak >= 7) return '🔥';
-    if (streak >= 3) return '⚡';
-    return '🌟';
+  const getRankIcon = (rank: string) => {
+    switch (rank) {
+      case 'Beginner': return '🌱';
+      case 'Elementary': return '🌿';
+      case 'Intermediate': return '🌳';
+      case 'Advanced Learner': return '🎓';
+      case 'Expert': return '👑';
+      default: return '📚';
+    }
   };
 
   const renderCompactView = () => (
     <View style={styles.compactContainer}>
-      {/* Streak */}
-      <TouchableOpacity style={styles.compactStreak}>
-        <Animated.View style={[styles.streakIconContainer, { transform: [{ scale: streakAnimation }] }]}>
-          <Text style={styles.streakIcon}>
-            {getStreakIcon(userProgress.currentStreak)}
-          </Text>
-        </Animated.View>
-        <Text style={styles.compactStreakText}>{userProgress.currentStreak}</Text>
-      </TouchableOpacity>
-
-      {/* Level */}
-      <View style={styles.compactLevel}>
+      <View style={styles.compactHeader}>
         <View style={styles.levelBadge}>
-          <Text style={styles.levelText}>{getLevelInfo().level}</Text>
+          <Text style={styles.levelText}>Lv.{stats?.currentLevel}</Text>
+        </View>
+        <View style={styles.xpContainer}>
+          <Text style={styles.xpText}>{stats?.totalXP} XP</Text>
+          <View style={styles.xpBarSmall}>
+            <Animated.View 
+              style={[
+                styles.xpBarFill,
+                {
+                  width: xpBarAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%'],
+                    extrapolate: 'clamp',
+                  }),
+                }
+              ]} 
+            />
         </View>
       </View>
-
-      {/* Points */}
-      <View style={styles.compactPoints}>
-        <Ionicons name="star" size={16} color={colors.warning[500]} />
-        <Text style={styles.compactPointsText}>{userProgress.totalPoints}</Text>
+        <Text style={styles.streakText}>🔥 {stats?.streak}</Text>
       </View>
     </View>
   );
 
-  const renderFullView = () => (
-    <ScrollView style={styles.fullContainer} showsVerticalScrollIndicator={false}>
-      {/* User Level & XP */}
-      <Card style={styles.levelCard}>
-        <LinearGradient
-          colors={[colors.primary[500], colors.primary[600]]}
-          style={styles.levelGradient}
-        >
+  const renderDetailedView = () => (
+    <View style={styles.detailedContainer}>
+      {/* Level & XP Section */}
+      <View style={styles.levelSection}>
           <View style={styles.levelHeader}>
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>{getLevelInfo().level}</Text>
+          <View style={[styles.levelBadgeLarge, { backgroundColor: getLevelColor(stats?.currentLevel || 1) }]}>
+            <Text style={styles.levelTextLarge}>Lv.{stats?.currentLevel}</Text>
+          </View>
+          <View style={styles.rankInfo}>
+            <Text style={styles.rankIcon}>{getRankIcon(stats?.rank || '')}</Text>
+            <Text style={styles.rankText}>{stats?.rank}</Text>
+            {stats?.leaderboardPosition && (
+              <Text style={styles.rankPosition}>#{stats.leaderboardPosition}</Text>
+            )}
             </View>
-            <View style={styles.levelInfo}>
-              <TranslationText size="lg" weight="semibold" color={colors.neutral[50]}>
-                Cấp độ {getLevelInfo().level}
-              </TranslationText>
-              <TranslationText size="sm" color={colors.neutral[200]}>
-                {getLevelInfo().currentLevelXP}/{getLevelInfo().nextLevelXP} XP
-              </TranslationText>
             </View>
+
+        <View style={styles.xpSection}>
+          <View style={styles.xpHeader}>
+            <Text style={styles.xpLabel}>Experience Points</Text>
+            <Text style={styles.xpProgress}>
+              {stats?.xpToNextLevel}/{stats?.totalXPToNextLevel} XP to next level
+            </Text>
           </View>
           
-          <View style={styles.xpProgressContainer}>
-            <View style={styles.xpProgressBg}>
-              <View 
+          <View style={styles.xpBarContainer}>
+            <View style={styles.xpBarBackground}>
+              <Animated.View 
                 style={[
-                  styles.xpProgressFill, 
-                  { width: `${getLevelInfo().progressPercentage}%` }
+                  styles.xpBarFillLarge,
+                  {
+                    width: xpBarAnimation.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%'],
+                      extrapolate: 'clamp',
+                    }),
+                  }
                 ]} 
               />
             </View>
           </View>
-        </LinearGradient>
-      </Card>
+          </View>
+          </View>
 
-      {/* Daily Goal */}
-      <Card style={styles.goalCard}>
-        <View style={styles.goalHeader}>
-          <View style={styles.goalIconContainer}>
-            <Ionicons name="calendar-outline" size={24} color={colors.accent[600]} />
-          </View>
-          <View style={styles.goalInfo}>
-            <TranslationText size="base" weight="medium">
-              Mục tiêu hàng ngày
-            </TranslationText>
-            <TranslationText size="sm" color={colors.neutral[600]}>
-              {userProgress.todayProgress}/{userProgress.dailyGoal} bài học
-            </TranslationText>
-          </View>
-        </View>
-        
-        <View style={styles.goalProgressContainer}>
-          <View style={styles.goalProgressBg}>
-            <View 
-              style={[
-                styles.goalProgressFill, 
-                { width: `${getDailyGoalProgress()}%` }
-              ]} 
-            />
-          </View>
-          <Text style={styles.goalPercentage}>
-            {Math.round(getDailyGoalProgress())}%
-          </Text>
-        </View>
-      </Card>
-
-      {/* Streak */}
-      <Card style={styles.streakCard}>
-        <View style={styles.streakHeader}>
-          <Animated.View style={[styles.streakIconContainer, { transform: [{ scale: streakAnimation }] }]}>
-            <Text style={styles.streakIcon}>
-              {getStreakIcon(userProgress.currentStreak)}
-            </Text>
-          </Animated.View>
-          <View style={styles.streakInfo}>
-            <TranslationText size="lg" weight="semibold">
-              {userProgress.currentStreak} ngày liên tiếp
-            </TranslationText>
-            <TranslationText size="sm" color={colors.neutral[600]}>
-              Kỷ lục: {userProgress.longestStreak} ngày
-            </TranslationText>
-          </View>
-        </View>
-        
-        <View style={styles.streakTips}>
-          <TranslationText size="xs" color={colors.neutral[500]}>
-            💡 Học ít nhất 1 bài mỗi ngày để duy trì streak!
-          </TranslationText>
-        </View>
-      </Card>
-
-      {/* Stats */}
+      {/* Stats Grid */}
       <View style={styles.statsGrid}>
-        <Card style={styles.statCard}>
-          <Text style={styles.statValue}>{userProgress.totalPoints}</Text>
-          <TranslationText size="sm" color={colors.neutral[600]}>
-            Tổng điểm
-          </TranslationText>
-        </Card>
-        
-        <Card style={styles.statCard}>
-          <Text style={styles.statValue}>{userProgress.lessonsCompleted}</Text>
-          <TranslationText size="sm" color={colors.neutral[600]}>
-            Bài học
-          </TranslationText>
-        </Card>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>🔥</Text>
+          <Text style={styles.statValue}>{stats?.streak}</Text>
+          <Text style={styles.statLabel}>Chuỗi ngày</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>📚</Text>
+          <Text style={styles.statValue}>{stats?.lessonsCompleted}</Text>
+          <Text style={styles.statLabel}>Bài học</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>💯</Text>
+          <Text style={styles.statValue}>{stats?.accuracy}%</Text>
+          <Text style={styles.statLabel}>Độ chính xác</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>⏱️</Text>
+          <Text style={styles.statValue}>{Math.floor((stats?.timeSpent || 0) / 60)}h</Text>
+          <Text style={styles.statLabel}>Thời gian</Text>
+        </View>
       </View>
 
-      {/* Achievements */}
-      <Card style={styles.achievementsCard}>
-        <TranslationText size="lg" weight="semibold" style={styles.achievementsTitle}>
-          Thành tích 🏆
-        </TranslationText>
-        
-        <View style={styles.achievementsList}>
-          {sampleAchievements.map((achievement) => (
-            <View key={achievement.id} style={styles.achievementItem}>
-              <View style={[
-                styles.achievementIcon,
-                achievement.isUnlocked ? styles.unlockedIcon : styles.lockedIcon
-              ]}>
-                <Text style={styles.achievementEmoji}>
-                  {achievement.isUnlocked ? achievement.icon : '🔒'}
+      {/* Achievements Section */}
+      <View style={styles.achievementsSection}>
+        <Text style={styles.sectionTitle}>🏆 Thành tích</Text>
+        <View style={styles.achievementsGrid}>
+          {stats?.achievements.map((achievement) => (
+            <TouchableOpacity 
+              key={achievement.id}
+              style={[
+                styles.achievementCard,
+                !achievement.unlocked && styles.achievementLocked
+              ]}
+              onPress={() => {
+                Alert.alert(
+                  achievement.titleVi,
+                  achievement.descriptionVi + `\n\nPhần thưởng: ${achievement.xpReward} XP`
+                );
+              }}
+            >
+                             <Text style={!achievement.unlocked ? 
+                 [styles.achievementIcon, styles.achievementIconLocked] : 
+                 styles.achievementIcon
+               }>
+                 {achievement.unlocked ? achievement.icon : '🔒'}
+               </Text>
+               <Text style={!achievement.unlocked ? 
+                 [styles.achievementTitle, styles.achievementTitleLocked] : 
+                 styles.achievementTitle
+               }>
+                 {achievement.titleVi}
                 </Text>
-              </View>
               
-              <View style={styles.achievementContent}>
-                <TranslationText 
-                  size="base" 
-                  weight="medium"
-                  color={achievement.isUnlocked ? colors.neutral[900] : colors.neutral[500]}
-                >
-                  {achievement.title}
-                </TranslationText>
-                <TranslationText 
-                  size="sm" 
-                  color={achievement.isUnlocked ? colors.neutral[600] : colors.neutral[400]}
-                >
-                  {achievement.description}
-                </TranslationText>
-                
-                {!achievement.isUnlocked && achievement.progress !== undefined && achievement.target && (
+              {!achievement.unlocked && achievement.progress !== undefined && (
                   <View style={styles.achievementProgress}>
-                    <View style={styles.achievementProgressBg}>
+                  <View style={styles.achievementProgressBar}>
                       <View 
                         style={[
                           styles.achievementProgressFill,
-                          { width: `${(achievement.progress / achievement.target) * 100}%` }
+                        { width: `${(achievement.progress! / achievement.maxProgress!) * 100}%` }
                         ]} 
                       />
                     </View>
-                    <TranslationText size="xs" color={colors.neutral[500]}>
-                      {achievement.progress}/{achievement.target}
-                    </TranslationText>
+                  <Text style={styles.achievementProgressText}>
+                    {achievement.progress}/{achievement.maxProgress}
+                  </Text>
                   </View>
                 )}
-              </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
-      </Card>
-    </ScrollView>
+      </View>
+
+      {/* XP Animation Overlay */}
+      {showXPAnimation && (
+        <Animated.View 
+          style={[
+            styles.xpAnimationOverlay,
+            {
+              transform: [{ translateY: xpFloatAnimation }],
+            }
+          ]}
+        >
+          <Text style={styles.xpAnimationText}>+{recentXPGain} XP</Text>
+        </Animated.View>
+      )}
+    </View>
   );
 
-  return showCompactView ? renderCompactView() : renderFullView();
+  const renderFloatingView = () => (
+    <View style={styles.floatingContainer}>
+      <Text style={styles.floatingXP}>{stats?.totalXP} XP</Text>
+      <Text style={styles.floatingLevel}>Lv.{stats?.currentLevel}</Text>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Đang tải thống kê...</Text>
+      </View>
+    );
+  }
+
+  if (!stats) {
+    return null;
+  }
+
+  // Render new achievement notifications
+  const achievementNotifications = newAchievements.map((achievement) => (
+    <Animated.View 
+      key={achievement.id}
+      style={[
+        styles.achievementNotification,
+        {
+          transform: [{ scale: achievementScale }],
+        }
+      ]}
+    >
+      <Text style={styles.notificationIcon}>{achievement.icon}</Text>
+      <Text style={styles.notificationTitle}>Thành tích mới!</Text>
+      <Text style={styles.notificationText}>{achievement.titleVi}</Text>
+    </Animated.View>
+  ));
+
+  switch (variant) {
+    case 'compact':
+      return (
+        <View>
+          {renderCompactView()}
+          {achievementNotifications}
+        </View>
+      );
+    case 'floating':
+      return renderFloatingView();
+    case 'detailed':
+    default:
+      return (
+        <View>
+          {renderDetailedView()}
+          {achievementNotifications}
+        </View>
+      );
+  }
 };
 
 const styles = StyleSheet.create({
-  // Compact View
+  // Compact variant
   compactContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: getResponsiveSpacing('md'),
-    padding: getResponsiveSpacing('md'),
     backgroundColor: colors.neutral[50],
     borderRadius: 12,
+    padding: getResponsiveSpacing('md'),
+    marginBottom: getResponsiveSpacing('sm'),
   },
-  compactStreak: {
+
+  compactHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: getResponsiveSpacing('xs'),
+    justifyContent: 'space-between',
   },
-  compactStreakText: {
-    fontSize: getResponsiveFontSize('base'),
-    fontWeight: '600',
-    color: colors.neutral[800],
+
+  levelBadge: {
+    backgroundColor: colors.primary[500],
+    borderRadius: 12,
+    paddingHorizontal: getResponsiveSpacing('sm'),
+    paddingVertical: getResponsiveSpacing('xs'),
   },
-  compactLevel: {
-    marginLeft: 'auto',
-  },
-  compactPoints: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: getResponsiveSpacing('xs'),
-  },
-  compactPointsText: {
+
+  levelText: {
     fontSize: getResponsiveFontSize('sm'),
-    fontWeight: '500',
+    fontWeight: 'bold',
+    color: colors.neutral[50],
+  },
+
+  xpContainer: {
+    flex: 1,
+    marginHorizontal: getResponsiveSpacing('md'),
+  },
+
+  xpText: {
+    fontSize: getResponsiveFontSize('sm'),
+    fontWeight: 'bold',
+    color: colors.neutral[700],
+    textAlign: 'center',
+  },
+
+  xpBarSmall: {
+    height: 6,
+    backgroundColor: colors.neutral[200],
+    borderRadius: 3,
+    marginTop: getResponsiveSpacing('xs'),
+    overflow: 'hidden',
+  },
+
+  xpBarFill: {
+    height: '100%',
+    backgroundColor: colors.secondary[500],
+    borderRadius: 3,
+  },
+
+  streakText: {
+    fontSize: getResponsiveFontSize('sm'),
+    fontWeight: 'bold',
     color: colors.neutral[700],
   },
 
-  // Full View
-  fullContainer: {
-    flex: 1,
-  },
-  
-  // Level Card
-  levelCard: {
-    padding: 0,
+  // Detailed variant
+  detailedContainer: {
+    backgroundColor: colors.neutral[50],
+    borderRadius: 16,
+    padding: getResponsiveSpacing('lg'),
     marginBottom: getResponsiveSpacing('md'),
   },
-  levelGradient: {
-    padding: getResponsiveSpacing('lg'),
-    borderRadius: 12,
+
+  levelSection: {
+    marginBottom: getResponsiveSpacing('lg'),
   },
+
   levelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: getResponsiveSpacing('md'),
   },
-  levelBadge: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: colors.neutral[50],
-    justifyContent: 'center',
-    alignItems: 'center',
+
+  levelBadgeLarge: {
+    borderRadius: 20,
+    paddingHorizontal: getResponsiveSpacing('md'),
+    paddingVertical: getResponsiveSpacing('sm'),
     marginRight: getResponsiveSpacing('md'),
-  },
-  levelText: {
-    fontSize: getResponsiveFontSize('xl'),
-    fontWeight: '700',
-    color: colors.primary[600],
-  },
-  levelInfo: {
-    flex: 1,
-  },
-  xpProgressContainer: {
-    marginTop: getResponsiveSpacing('sm'),
-  },
-  xpProgressBg: {
-    height: 8,
-    backgroundColor: colors.primary[300],
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  xpProgressFill: {
-    height: '100%',
-    backgroundColor: colors.neutral[50],
-    borderRadius: 4,
   },
 
-  // Goal Card
-  goalCard: {
-    marginBottom: getResponsiveSpacing('md'),
+  levelTextLarge: {
+    fontSize: getResponsiveFontSize('lg'),
+    fontWeight: 'bold',
+    color: colors.neutral[50],
   },
-  goalHeader: {
+
+  rankInfo: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: getResponsiveSpacing('md'),
   },
-  goalIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.accent[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: getResponsiveSpacing('md'),
+
+  rankIcon: {
+    fontSize: getResponsiveFontSize('xl'),
+    marginRight: getResponsiveSpacing('sm'),
   },
-  goalInfo: {
-    flex: 1,
-  },
-  goalProgressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: getResponsiveSpacing('md'),
-  },
-  goalProgressBg: {
-    flex: 1,
-    height: 8,
-    backgroundColor: colors.neutral[200],
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  goalProgressFill: {
-    height: '100%',
-    backgroundColor: colors.accent[500],
-    borderRadius: 4,
-  },
-  goalPercentage: {
-    fontSize: getResponsiveFontSize('sm'),
+
+  rankText: {
+    fontSize: getResponsiveFontSize('base'),
     fontWeight: '600',
     color: colors.neutral[700],
-    minWidth: 40,
-    textAlign: 'right',
   },
 
-  // Streak Card
-  streakCard: {
-    marginBottom: getResponsiveSpacing('md'),
+  rankPosition: {
+    fontSize: getResponsiveFontSize('sm'),
+    color: colors.neutral[500],
+    marginLeft: getResponsiveSpacing('sm'),
   },
-  streakHeader: {
+
+  xpSection: {
+    gap: getResponsiveSpacing('sm'),
+  },
+
+  xpHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: getResponsiveSpacing('sm'),
-  },
-  streakIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: colors.error[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: getResponsiveSpacing('md'),
-  },
-  streakIcon: {
-    fontSize: 24,
-  },
-  streakInfo: {
-    flex: 1,
-  },
-  streakTips: {
-    backgroundColor: colors.neutral[100],
-    padding: getResponsiveSpacing('sm'),
-    borderRadius: 8,
   },
 
-  // Stats Grid
+  xpLabel: {
+    fontSize: getResponsiveFontSize('base'),
+    fontWeight: '600',
+    color: colors.neutral[700],
+  },
+
+  xpProgress: {
+    fontSize: getResponsiveFontSize('sm'),
+    color: colors.neutral[500],
+  },
+
+  xpBarContainer: {
+    gap: getResponsiveSpacing('xs'),
+  },
+
+  xpBarBackground: {
+    height: 12,
+    backgroundColor: colors.neutral[200],
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+
+  xpBarFillLarge: {
+    height: '100%',
+    backgroundColor: colors.secondary[500],
+    borderRadius: 6,
+  },
+
+  // Stats grid
   statsGrid: {
     flexDirection: 'row',
-    gap: getResponsiveSpacing('md'),
-    marginBottom: getResponsiveSpacing('md'),
+    flexWrap: 'wrap',
+    gap: getResponsiveSpacing('sm'),
+    marginBottom: getResponsiveSpacing('lg'),
   },
+
   statCard: {
     flex: 1,
+    minWidth: Layout.isMobile ? '47%' : '22%',
+    backgroundColor: colors.neutral[100],
+    borderRadius: 12,
+    padding: getResponsiveSpacing('md'),
     alignItems: 'center',
-    padding: getResponsiveSpacing('lg'),
   },
-  statValue: {
-    fontSize: getResponsiveFontSize('2xl'),
-    fontWeight: '700',
-    color: colors.primary[600],
+
+  statIcon: {
+    fontSize: getResponsiveFontSize('xl'),
     marginBottom: getResponsiveSpacing('xs'),
   },
 
+  statValue: {
+    fontSize: getResponsiveFontSize('lg'),
+    fontWeight: 'bold',
+    color: colors.primary[500],
+  },
+
+  statLabel: {
+    fontSize: getResponsiveFontSize('xs'),
+    color: colors.neutral[600],
+    marginTop: getResponsiveSpacing('xs'),
+  },
+
   // Achievements
-  achievementsCard: {
-    marginBottom: getResponsiveSpacing('md'),
-  },
-  achievementsTitle: {
-    marginBottom: getResponsiveSpacing('lg'),
-  },
-  achievementsList: {
+  achievementsSection: {
     gap: getResponsiveSpacing('md'),
   },
-  achievementItem: {
+
+  sectionTitle: {
+    fontSize: getResponsiveFontSize('lg'),
+    fontWeight: 'bold',
+    color: colors.neutral[900],
+  },
+
+  achievementsGrid: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: getResponsiveSpacing('sm'),
   },
-  achievementIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: getResponsiveSpacing('md'),
-  },
-  unlockedIcon: {
-    backgroundColor: colors.accent[100],
-  },
-  lockedIcon: {
-    backgroundColor: colors.neutral[200],
-  },
-  achievementEmoji: {
-    fontSize: 20,
-  },
-  achievementContent: {
+
+  achievementCard: {
     flex: 1,
+    minWidth: Layout.isMobile ? '47%' : '22%',
+    backgroundColor: colors.neutral[100],
+    borderRadius: 12,
+    padding: getResponsiveSpacing('md'),
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
+
+  achievementLocked: {
+    backgroundColor: colors.neutral[100],
+    opacity: 0.6,
+  },
+
+  achievementIcon: {
+    fontSize: getResponsiveFontSize('2xl'),
+    marginBottom: getResponsiveSpacing('xs'),
+  },
+
+  achievementIconLocked: {
+    opacity: 0.5,
+  },
+
+  achievementTitle: {
+    fontSize: getResponsiveFontSize('sm'),
+    fontWeight: '600',
+    color: colors.neutral[700],
+    textAlign: 'center',
+  },
+
+  achievementTitleLocked: {
+    color: colors.neutral[500],
+  },
+
   achievementProgress: {
-    marginTop: getResponsiveSpacing('sm'),
+    width: '100%',
+    marginTop: getResponsiveSpacing('xs'),
   },
-  achievementProgressBg: {
+
+  achievementProgressBar: {
     height: 4,
     backgroundColor: colors.neutral[200],
     borderRadius: 2,
     overflow: 'hidden',
-    marginBottom: getResponsiveSpacing('xs'),
   },
+
   achievementProgressFill: {
     height: '100%',
+    backgroundColor: colors.primary[500],
+  },
+
+  achievementProgressText: {
+    fontSize: getResponsiveFontSize('xs'),
+    color: colors.neutral[500],
+    textAlign: 'center',
+    marginTop: getResponsiveSpacing('xs'),
+  },
+
+  // Floating variant
+  floatingContainer: {
+    position: 'absolute',
+    top: getResponsiveSpacing('md'),
+    right: getResponsiveSpacing('md'),
+    backgroundColor: colors.primary[500],
+    borderRadius: 20,
+    paddingHorizontal: getResponsiveSpacing('md'),
+    paddingVertical: getResponsiveSpacing('sm'),
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: getResponsiveSpacing('sm'),
+    zIndex: 1000,
+  },
+
+  floatingXP: {
+    fontSize: getResponsiveFontSize('sm'),
+    fontWeight: 'bold',
+    color: colors.neutral[50],
+  },
+
+  floatingLevel: {
+    fontSize: getResponsiveFontSize('sm'),
+    fontWeight: 'bold',
+    color: colors.neutral[50],
+  },
+
+  // Animations
+  xpAnimationOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -25 }, { translateY: -10 }],
+    zIndex: 1000,
+  },
+
+  xpAnimationText: {
+    fontSize: getResponsiveFontSize('xl'),
+    fontWeight: 'bold',
+    color: colors.secondary[500],
+    textShadowColor: colors.neutral[900],
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+  },
+
+  achievementNotification: {
+    position: 'absolute',
+    top: getResponsiveSpacing('lg'),
+    left: getResponsiveSpacing('md'),
+    right: getResponsiveSpacing('md'),
     backgroundColor: colors.accent[500],
-    borderRadius: 2,
+    borderRadius: 12,
+    padding: getResponsiveSpacing('md'),
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+
+  notificationIcon: {
+    fontSize: getResponsiveFontSize('2xl'),
+    marginBottom: getResponsiveSpacing('xs'),
+  },
+
+  notificationTitle: {
+    fontSize: getResponsiveFontSize('base'),
+    fontWeight: 'bold',
+    color: colors.neutral[50],
+  },
+
+  notificationText: {
+    fontSize: getResponsiveFontSize('sm'),
+    color: colors.neutral[50],
+    marginTop: getResponsiveSpacing('xs'),
+  },
+
+  // Loading state
+  loadingContainer: {
+    padding: getResponsiveSpacing('lg'),
+    alignItems: 'center',
+  },
+
+  loadingText: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[600],
   },
 }); 

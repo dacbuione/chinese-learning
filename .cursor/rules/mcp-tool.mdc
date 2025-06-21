@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Luôn dùng playwright mcp để test đảm bảo chạy thành công không có lỗi. (test toàn bộ các chức năng mới được thêm vào)

@@ -6,139 +6,40 @@ import {
   TouchableOpacity,
   Animated,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 // Import components and theme
-import { colors, getResponsiveSpacing, getResponsiveFontSize } from '../../../src/theme';
+import { colors, getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../../src/theme';
 import { useTranslation } from '../../../src/localization';
 import { useVocabularyTTS } from '../../../src/hooks/useTTS';
 import { Card } from '../../../src/components/ui/atoms/Card';
 import { Button } from '../../../src/components/ui/atoms/Button';
+import { ProgressBar } from '../../../src/components/ui/molecules/ProgressBar';
+import { api } from '../../../src/services/api/client';
 
 // Vocabulary data interface
 interface VocabularyItem {
   id: string;
   hanzi: string;
   pinyin: string;
-  vietnamese: string;
-  english: string;
+  vietnameseTranslation: string;
+  englishTranslation: string;
   tone: number;
-  difficulty: 'easy' | 'medium' | 'hard';
-  category: string;
+  difficulty: 'hsk1' | 'hsk2' | 'hsk3' | 'hsk4' | 'hsk5' | 'hsk6';
+  category?: string;
   audio?: string;
 }
-
-// Mock vocabulary data
-const vocabularyData: VocabularyItem[] = [
-  {
-    id: '1',
-    hanzi: '你好',
-    pinyin: 'nǐ hǎo',
-    vietnamese: 'Xin chào',
-    english: 'Hello',
-    tone: 3,
-    difficulty: 'easy',
-    category: 'greetings',
-  },
-  {
-    id: '2', 
-    hanzi: '谢谢',
-    pinyin: 'xiè xiè',
-    vietnamese: 'Cảm ơn',
-    english: 'Thank you',
-    tone: 4,
-    difficulty: 'easy',
-    category: 'greetings',
-  },
-  {
-    id: '3',
-    hanzi: '再见',
-    pinyin: 'zài jiàn',
-    vietnamese: 'Tạm biệt',
-    english: 'Goodbye',
-    tone: 4,
-    difficulty: 'easy', 
-    category: 'greetings',
-  },
-  {
-    id: '4',
-    hanzi: '学生',
-    pinyin: 'xué shēng',
-    vietnamese: 'Học sinh',
-    english: 'Student',
-    tone: 2,
-    difficulty: 'medium',
-    category: 'people',
-  },
-  {
-    id: '5',
-    hanzi: '老师',
-    pinyin: 'lǎo shī',
-    vietnamese: 'Giáo viên',
-    english: 'Teacher',
-    tone: 3,
-    difficulty: 'medium',
-    category: 'people',
-  },
-  {
-    id: '6',
-    hanzi: '朋友',
-    pinyin: 'péng yǒu',
-    vietnamese: 'Bạn bè',
-    english: 'Friend',
-    tone: 2,
-    difficulty: 'medium',
-    category: 'people',
-  },
-  {
-    id: '7',
-    hanzi: '家',
-    pinyin: 'jiā',
-    vietnamese: 'Nhà',
-    english: 'Home',
-    tone: 1,
-    difficulty: 'easy',
-    category: 'places',
-  },
-  {
-    id: '8',
-    hanzi: '学校',
-    pinyin: 'xué xiào',
-    vietnamese: 'Trường học',
-    english: 'School',
-    tone: 2,
-    difficulty: 'medium',
-    category: 'places',
-  },
-  {
-    id: '9',
-    hanzi: '水',
-    pinyin: 'shuǐ',
-    vietnamese: 'Nước',
-    english: 'Water',
-    tone: 3,
-    difficulty: 'easy',
-    category: 'drinks',
-  },
-  {
-    id: '10',
-    hanzi: '茶',
-    pinyin: 'chá',
-    vietnamese: 'Trà',
-    english: 'Tea',
-    tone: 2,
-    difficulty: 'easy',
-    category: 'drinks',
-  },
-];
 
 export default function VocabularyPracticeScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   
+  const [vocabularyData, setVocabularyData] = useState<VocabularyItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
@@ -158,26 +59,67 @@ export default function VocabularyPracticeScreen() {
   const fadeAnim = new Animated.Value(1);
   const slideAnim = new Animated.Value(0);
 
+  // Load vocabulary data from API
+  useEffect(() => {
+    loadVocabularyData();
+  }, []);
+
+  const loadVocabularyData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.vocabulary.getAll();
+      
+      if (response.success && response.data) {
+        // Transform API data to match component interface
+        const transformedData: VocabularyItem[] = response.data.map((item: any) => ({
+          id: item.id,
+          hanzi: item.hanzi,
+          pinyin: item.pinyin,
+          vietnameseTranslation: item.vietnameseTranslation,
+          englishTranslation: item.englishTranslation,
+          tone: item.tone,
+          difficulty: item.difficulty,
+          category: item.tags?.[0] || 'general',
+          audio: item.audioUrl,
+        }));
+        
+        setVocabularyData(transformedData);
+      } else {
+        Alert.alert('Lỗi', 'Không thể tải dữ liệu từ vựng. Vui lòng thử lại.');
+        // Fallback to empty array
+        setVocabularyData([]);
+      }
+    } catch (error) {
+      console.error('Error loading vocabulary:', error);
+      Alert.alert('Lỗi', 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+      setVocabularyData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const currentCard = vocabularyData[currentIndex];
   const totalCards = vocabularyData.length;
-  const progress = ((sessionCount / totalCards) * 100).toFixed(0);
-  const accuracy = sessionCount > 0 ? ((correctCount / sessionCount) * 100).toFixed(0) : 0;
+  const progress = totalCards > 0 ? ((sessionCount / totalCards) * 100).toFixed(0) : '0';
+  const accuracy = sessionCount > 0 ? ((correctCount / sessionCount) * 100).toFixed(0) : '0';
 
   useEffect(() => {
-    // Reset animation when card changes
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [currentIndex]);
+    if (vocabularyData.length > 0) {
+      // Reset animation when card changes
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [currentIndex, vocabularyData]);
 
   const getToneColor = (tone: number) => {
     const toneColors = {
@@ -190,6 +132,8 @@ export default function VocabularyPracticeScreen() {
   };
 
   const handlePlayAudio = async () => {
+    if (!currentCard) return;
+    
     try {
       if (isTTSPlaying) {
         await stopTTS();
@@ -306,6 +250,37 @@ export default function VocabularyPracticeScreen() {
     </View>
   );
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Đang tải từ vựng...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // No data state
+  if (!vocabularyData.length) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="book-outline" size={64} color={colors.neutral[400]} />
+          <Text style={styles.emptyTitle}>Không có từ vựng</Text>
+          <Text style={styles.emptySubtitle}>Hiện tại chưa có dữ liệu từ vựng.</Text>
+          <Button
+            variant="primary"
+            onPress={loadVocabularyData}
+            style={styles.retryButton}
+          >
+            Thử lại
+          </Button>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (isSessionComplete) {
     return (
       <SafeAreaView style={styles.container}>
@@ -410,8 +385,8 @@ export default function VocabularyPracticeScreen() {
             {showAnswer && (
               <Animated.View style={styles.answerContainer}>
                 <View style={styles.translationsContainer}>
-                  <Text style={styles.vietnameseText}>{currentCard.vietnamese}</Text>
-                  <Text style={styles.englishText}>{currentCard.english}</Text>
+                  <Text style={styles.vietnameseText}>{currentCard.vietnameseTranslation}</Text>
+                  <Text style={styles.englishText}>{currentCard.englishTranslation}</Text>
                 </View>
                 
                 <Text style={styles.difficultyPrompt}>Bạn nhớ từ này như thế nào?</Text>
@@ -772,5 +747,41 @@ const styles = StyleSheet.create({
   },
   audioButtonActive: {
     backgroundColor: colors.primary[100],
+  },
+  
+  // Loading and empty states
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSpacing('lg'),
+  },
+  loadingText: {
+    fontSize: getResponsiveFontSize('lg'),
+    color: colors.neutral[600],
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSpacing('lg'),
+  },
+  emptyTitle: {
+    fontSize: getResponsiveFontSize('xl'),
+    fontWeight: 'bold',
+    color: colors.neutral[700],
+    marginTop: getResponsiveSpacing('lg'),
+    marginBottom: getResponsiveSpacing('sm'),
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[500],
+    textAlign: 'center',
+    marginBottom: getResponsiveSpacing('lg'),
+  },
+  retryButton: {
+    paddingHorizontal: getResponsiveSpacing('xl'),
   },
 }); 

@@ -6,9 +6,12 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors, getResponsiveSpacing, getResponsiveFontSize } from '../../../src/theme';
+import { api } from '../../../src/services/api/client';
 
 interface QuizQuestion {
   id: string;
@@ -25,100 +28,7 @@ interface QuizData {
   questions: QuizQuestion[];
 }
 
-const quizData: Record<string, QuizData> = {
-  'chao-hoi': {
-    lessonId: 'chao-hoi',
-    title: 'Kiểm tra: Chào hỏi cơ bản',
-    questions: [
-      {
-        id: '1',
-        type: 'multiple-choice',
-        question: '"你好" có nghĩa là gì?',
-        options: ['Tạm biệt', 'Xin chào', 'Cảm ơn', 'Xin lỗi'],
-        correctAnswer: 1,
-        explanation: '你好 (nǐ hǎo) là cách chào hỏi phổ biến nhất trong tiếng Trung'
-      },
-      {
-        id: '2',
-        type: 'tone',
-        question: '"好" trong "你好" có thanh điệu nào?',
-        options: ['Thanh 1 (ngang)', 'Thanh 2 (sắc)', 'Thanh 3 (huyền)', 'Thanh 4 (nặng)'],
-        correctAnswer: 2,
-        explanation: '"好" đọc là "hǎo" với thanh 3 (huyền)'
-      },
-      {
-        id: '3',
-        type: 'translation',
-        question: 'Dịch sang tiếng Trung: "Cảm ơn"',
-        options: ['你好', '再见', '谢谢', '不客气'],
-        correctAnswer: 2,
-        explanation: '"Cảm ơn" trong tiếng Trung là "谢谢" (xiè xiè)'
-      },
-      {
-        id: '4',
-        type: 'multiple-choice',
-        question: 'Khi ai đó nói "谢谢", bạn trả lời gì?',
-        options: ['你好', '再见', '谢谢', '不客气'],
-        correctAnswer: 3,
-        explanation: '"不客气" (bù kè qì) có nghĩa là "không có gì" - cách đáp lại khi được cảm ơn'
-      },
-      {
-        id: '5',
-        type: 'tone',
-        question: '"见" trong "再见" có thanh điệu nào?',
-        options: ['Thanh 1 (ngang)', 'Thanh 2 (sắc)', 'Thanh 3 (huyền)', 'Thanh 4 (nặng)'],
-        correctAnswer: 3,
-        explanation: '"见" đọc là "jiàn" với thanh 4 (nặng)'
-      }
-    ]
-  },
-  'so-dem': {
-    lessonId: 'so-dem',
-    title: 'Kiểm tra: Số đếm 1-10',
-    questions: [
-      {
-        id: '1',
-        type: 'multiple-choice',
-        question: 'Số "3" trong tiếng Trung là gì?',
-        options: ['二', '三', '四', '五'],
-        correctAnswer: 1,
-        explanation: 'Số 3 trong tiếng Trung là "三" (sān)'
-      },
-      {
-        id: '2',
-        type: 'translation',
-        question: 'Chọn số "5" trong tiếng Trung:',
-        options: ['四', '五', '六', '七'],
-        correctAnswer: 1,
-        explanation: 'Số 5 trong tiếng Trung là "五" (wǔ)'
-      },
-      {
-        id: '3',
-        type: 'tone',
-        question: '"一" có thanh điệu nào?',
-        options: ['Thanh 1 (ngang)', 'Thanh 2 (sắc)', 'Thanh 3 (huyền)', 'Thanh 4 (nặng)'],
-        correctAnswer: 0,
-        explanation: '"一" đọc là "yī" với thanh 1 (ngang)'
-      },
-      {
-        id: '4',
-        type: 'multiple-choice',
-        question: 'Số nào đây là "四"?',
-        options: ['3', '4', '5', '6'],
-        correctAnswer: 1,
-        explanation: '"四" (sì) là số 4 trong tiếng Trung'
-      },
-      {
-        id: '5',
-        type: 'translation',
-        question: 'Số "2" trong tiếng Trung là:',
-        options: ['一', '二', '三', '四'],
-        correctAnswer: 1,
-        explanation: 'Số 2 trong tiếng Trung là "二" (èr)'
-      }
-    ]
-  }
-};
+// Remove mock data - will be loaded from API
 
 export default function QuizScreen() {
   const { lesson } = useLocalSearchParams<{ lesson: string }>();
@@ -129,8 +39,40 @@ export default function QuizScreen() {
   const [showResult, setShowResult] = useState(false);
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
   const [quizStarted, setQuizStarted] = useState(false);
+  const [quiz, setQuiz] = useState<QuizData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const quiz = lesson ? quizData[lesson] : null;
+  // Load quiz data from API
+  useEffect(() => {
+    loadQuizData();
+  }, [lesson]);
+
+  const loadQuizData = async () => {
+    if (!lesson) {
+      setError('Không tìm thấy thông tin bài học');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await api.quiz.getByLesson(lesson);
+      
+      if (response.success && response.data) {
+        setQuiz(response.data);
+      } else {
+        setError(response.error || 'Không thể tải bài kiểm tra');
+      }
+    } catch (err) {
+      console.error('Error loading quiz:', err);
+      setError('Lỗi kết nối mạng');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (quizStarted && timeLeft > 0 && !showResult) {
@@ -143,14 +85,34 @@ export default function QuizScreen() {
     }
   }, [timeLeft, quizStarted, showResult]);
 
-  if (!quiz) {
+  // Show loading state
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary[500]} />
+          <Text style={styles.loadingText}>Đang tải bài kiểm tra...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show error state
+  if (error || !quiz) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Không tìm thấy bài kiểm tra</Text>
-          <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-            <Text style={styles.buttonText}>Quay lại</Text>
-          </TouchableOpacity>
+          <Text style={styles.errorIcon}>❌</Text>
+          <Text style={styles.errorText}>{error || 'Không tìm thấy bài kiểm tra'}</Text>
+          <Text style={styles.errorSubtext}>Vui lòng kiểm tra kết nối mạng và thử lại</Text>
+          <View style={styles.errorActions}>
+            <TouchableOpacity style={styles.retryButton} onPress={loadQuizData}>
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Text style={styles.backButtonText}>Quay lại</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -576,6 +538,49 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: getResponsiveFontSize('lg'),
     color: colors.neutral[700],
+    marginBottom: getResponsiveSpacing('md'),
+    textAlign: 'center',
+  },
+  
+  // Loading states
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getResponsiveSpacing('xl'),
+  },
+  loadingText: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[600],
+    marginTop: getResponsiveSpacing('md'),
+    textAlign: 'center',
+  },
+
+  // Enhanced error states
+  errorIcon: {
+    fontSize: getResponsiveFontSize('5xl'),
     marginBottom: getResponsiveSpacing('lg'),
+  },
+  errorSubtext: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[500],
+    textAlign: 'center',
+    marginBottom: getResponsiveSpacing('xl'),
+    lineHeight: 20,
+  },
+  errorActions: {
+    flexDirection: 'row',
+    gap: getResponsiveSpacing('md'),
+  },
+  retryButton: {
+    backgroundColor: colors.primary[500],
+    paddingHorizontal: getResponsiveSpacing('lg'),
+    paddingVertical: getResponsiveSpacing('md'),
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    fontSize: getResponsiveFontSize('base'),
+    fontWeight: '600',
+    color: colors.neutral[50],
   },
 }); 

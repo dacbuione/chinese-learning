@@ -1,70 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Vibration } from 'react-native';
-import { Card } from '@/ui/atoms/Card';
-import { ChineseText, PinyinText, TranslationText } from '@/ui/atoms/Text';
-import { Button } from '@/ui/atoms/Button';
-import { colors, Layout, getResponsiveSpacing } from '@/theme';
-import { VocabularyItem } from '@/types/vocabulary.types';
-import { Volume2, Heart, BookOpen } from 'lucide-react-native';
-import { useVocabularyTTS } from '@/hooks/useTTS';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { colors, getResponsiveSpacing, getResponsiveFontSize, Layout } from '../../../../../theme';
 
 interface VocabularyCardProps {
-  vocabulary: VocabularyItem;
-  onPress?: (vocabulary: VocabularyItem) => void;
-  onAudioPress?: (audioUrl: string) => void;
-  onToggleFavorite?: (id: string) => void;
-  onAnswer?: (isCorrect: boolean, responseTime: number) => void;
-  variant?: 'default' | 'compact' | 'quiz' | 'practice';
-  showProgress?: boolean;
-  isFavorite?: boolean;
-  autoReveal?: boolean;
-  hideTranslations?: boolean;
-  mode?: 'study' | 'practice' | 'review';
-  progress?: {
-    correct: number;
-    total: number;
-    streak: number;
-    masteryLevel?: 'new' | 'learning' | 'review' | 'mastered';
-    difficulty?: 'easy' | 'medium' | 'hard' | 'very_hard';
-  };
+  hanzi: string;
+  pinyin: string;
+  english: string;
+  vietnamese: string;
+  tone: number;
+  onPress: () => void;
+  style?: any;
 }
 
 export const VocabularyCard: React.FC<VocabularyCardProps> = ({
-  vocabulary,
+  hanzi,
+  pinyin,
+  english,
+  vietnamese,
+  tone,
   onPress,
-  onAudioPress,
-  onToggleFavorite,
-  onAnswer,
-  variant = 'default',
-  showProgress = false,
-  isFavorite = false,
-  autoReveal = false,
-  hideTranslations = false,
-  mode = 'study',
-  progress,
+  style
 }) => {
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [showStrokeOrder, setShowStrokeOrder] = useState(false);
-  const [startTime, setStartTime] = useState<number>(Date.now());
-  const [flipAnimation] = useState(new Animated.Value(0));
-
-  // Auto-reveal for study mode
-  useEffect(() => {
-    if (autoReveal && mode === 'study') {
-      const timer = setTimeout(() => {
-        handleFlip();
-      }, 2000); // Auto reveal after 2 seconds
-      return () => clearTimeout(timer);
-    }
-  }, [autoReveal, mode]);
-
-  // TTS Hook
-  const {
-    isLoading: isTTSLoading,
-    isPlaying: isTTSPlaying,
-    speakVocabulary,
-    stop: stopTTS,
-  } = useVocabularyTTS();
+  const [isPressed, setIsPressed] = useState(false);
 
   const getToneColor = (tone: number) => {
     const toneColors = {
@@ -88,397 +45,117 @@ export const VocabularyCard: React.FC<VocabularyCardProps> = ({
     return toneNames[tone as keyof typeof toneNames] || 'Thanh nhẹ';
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'beginner': 
-      case 'easy': return colors.accent[500];
-      case 'intermediate': 
-      case 'medium': return colors.warning[500];
-      case 'advanced': 
-      case 'hard': return colors.error[500];
-      case 'very_hard': return colors.error[600];
-      default: return colors.neutral[500];
-    }
-  };
-
-  const getMasteryIcon = () => {
-    if (!progress?.masteryLevel) return 'help-circle-outline';
-    
-    switch (progress.masteryLevel) {
-      case 'new': return 'add-circle-outline';
-      case 'learning': return 'school-outline';
-      case 'review': return 'refresh-outline';
-      case 'mastered': return 'checkmark-circle';
-      default: return 'help-circle-outline';
-    }
-  };
-
-  const getMasteryColor = () => {
-    if (!progress?.masteryLevel) return colors.neutral[400];
-    
-    switch (progress.masteryLevel) {
-      case 'new': return colors.primary[500];
-      case 'learning': return colors.warning[500];
-      case 'review': return colors.secondary[500];
-      case 'mastered': return colors.success[500];
-      default: return colors.neutral[400];
-    }
-  };
-
-  const handleFlip = () => {
-    setIsFlipped(!isFlipped);
-    
-    Animated.timing(flipAnimation, {
-      toValue: isFlipped ? 0 : 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handleCardPress = () => {
-    if (variant === 'quiz' || variant === 'practice') {
-      handleFlip();
-    } else {
-      onPress?.(vocabulary);
-    }
-  };
-
-  const handleAnswer = (isCorrect: boolean) => {
-    const responseTime = Date.now() - startTime;
-    
-    // Haptic feedback
-    if (isCorrect) {
-      Vibration.vibrate(50); // Short success vibration
-    } else {
-      Vibration.vibrate([0, 100, 50, 100]); // Double vibration for error
-    }
-    
-    onAnswer?.(isCorrect, responseTime);
-    setStartTime(Date.now()); // Reset timer for next word
-  };
-
-  const handleAudioPress = async () => {
-    try {
-      if (isTTSPlaying) {
-        await stopTTS();
-      } else {
-        await speakVocabulary({
-          simplified: vocabulary.hanzi,
-          pinyin: vocabulary.pinyin,
-          tone: vocabulary.tone,
-        });
-      }
-    } catch (error) {
-      console.error('VocabularyCard TTS Error:', error);
-    }
-    
-    // Fallback to original audio URL if available
-    if (vocabulary.audioUrl && onAudioPress) {
-      onAudioPress(vocabulary.audioUrl);
-    }
-  };
-
-  const handleFavoritePress = () => {
-    onToggleFavorite?.(vocabulary.id);
-  };
-
-  const renderCompactVariant = () => (
-    <TouchableOpacity style={styles.compactContainer} onPress={handleCardPress}>
-      <View style={styles.compactContent}>
-        <ChineseText size="3xl" tone={vocabulary.tone}>
-          {vocabulary.hanzi}
-        </ChineseText>
-        <View style={styles.compactInfo}>
-          <PinyinText size="sm">{vocabulary.pinyin}</PinyinText>
-          <TranslationText language="vi" size="sm">
-            {vocabulary.vietnamese}
-          </TranslationText>
-        </View>
-      </View>
-      <Button variant="ghost" size="sm" onPress={handleAudioPress}>
-        <Volume2 size={16} color={colors.primary[500]} />
-      </Button>
-    </TouchableOpacity>
-  );
-
-  const renderQuizVariant = () => (
-    <Card variant="elevated" style={styles.quizContainer}>
-      <TouchableOpacity onPress={handleCardPress} style={styles.quizContent}>
-        {!isFlipped ? (
-          <View style={styles.quizFront}>
-            <ChineseText size="6xl" tone={vocabulary.tone} showTone>
-              {vocabulary.hanzi}
-            </ChineseText>
-            <TranslationText size="sm" color={colors.neutral[500]}>
-              Chạm để xem nghĩa
-            </TranslationText>
-          </View>
-        ) : (
-          <View style={styles.quizBack}>
-            <PinyinText size="xl">{vocabulary.pinyin}</PinyinText>
-            <TranslationText language="vi" size="lg" weight="medium">
-              {vocabulary.vietnamese}
-            </TranslationText>
-            <TranslationText language="en" size="base" color={colors.neutral[600]}>
-              {vocabulary.english}
-            </TranslationText>
-          </View>
-        )}
-      </TouchableOpacity>
-    </Card>
-  );
-
-  if (variant === 'compact') return renderCompactVariant();
-  if (variant === 'quiz' || variant === 'practice') return renderQuizVariant();
+  const handlePressIn = () => setIsPressed(true);
+  const handlePressOut = () => setIsPressed(false);
 
   return (
-    <Card variant="default" style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.categoryContainer}>
-          <TranslationText size="xs" color={colors.neutral[600]}>
-            {vocabulary.category}
-          </TranslationText>
-          <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(vocabulary.difficulty) }]}>
-            <TranslationText size="xs" color={colors.neutral[50]} weight="medium">
-              {vocabulary.difficulty}
-            </TranslationText>
-          </View>
+    <TouchableOpacity
+      style={[
+        styles.container,
+        isPressed && styles.pressedContainer,
+        style
+      ]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      activeOpacity={0.9}
+    >
+      {/* Tone Indicator */}
+      <View style={styles.toneRow}>
+        <View style={[styles.toneIndicator, { backgroundColor: getToneColor(tone) }]} />
+        <Text style={[styles.toneText, { color: getToneColor(tone) }]}>
+          {getToneName(tone)}
+        </Text>
         </View>
         
-        <View style={styles.actions}>
-          {vocabulary.audioUrl && (
-            <Button variant="ghost" size="sm" onPress={handleAudioPress}>
-              <Volume2 size={20} color={colors.primary[500]} />
-            </Button>
-          )}
-          
-          <Button variant="ghost" size="sm" onPress={handleFavoritePress}>
-            <Heart 
-              size={20} 
-              color={isFavorite ? colors.error[500] : colors.neutral[400]}
-              fill={isFavorite ? colors.error[500] : 'transparent'}
-            />
-          </Button>
-        </View>
-      </View>
+      {/* Chinese Character */}
+      <Text style={styles.hanzi}>{hanzi}</Text>
 
-      {/* Main Content */}
-      <TouchableOpacity style={styles.content} onPress={handleCardPress}>
-        <View style={styles.toneIndicator}>
-          <View style={[styles.toneDot, { backgroundColor: getToneColor(vocabulary.tone) }]} />
-          <TranslationText size="xs" color={getToneColor(vocabulary.tone)}>
-            {getToneName(vocabulary.tone)}
-          </TranslationText>
-        </View>
+      {/* Pinyin */}
+      <Text style={[styles.pinyin, { color: getToneColor(tone) }]}>
+        {pinyin}
+      </Text>
 
-        <ChineseText size="5xl" tone={vocabulary.tone} style={styles.hanzi}>
-          {vocabulary.hanzi}
-        </ChineseText>
-
-        <PinyinText size="xl" style={styles.pinyin}>
-          {vocabulary.pinyin}
-        </PinyinText>
-
+      {/* Translations */}
         <View style={styles.translations}>
-          <TranslationText language="vi" size="lg" weight="medium" style={styles.vietnamese}>
-            {vocabulary.vietnamese}
-          </TranslationText>
-          <TranslationText language="en" size="base" color={colors.neutral[600]}>
-            {vocabulary.english}
-          </TranslationText>
+        <Text style={styles.vietnamese}>{vietnamese}</Text>
+        <Text style={styles.english}>{english}</Text>
         </View>
       </TouchableOpacity>
-
-      {/* Progress Section */}
-      {showProgress && progress && (
-        <View style={styles.progressSection}>
-          <View style={styles.progressStats}>
-            <TranslationText size="xs" color={colors.neutral[600]}>
-              Đúng: {progress.correct}/{progress.total}
-            </TranslationText>
-            <TranslationText size="xs" color={colors.neutral[600]}>
-              Streak: {progress.streak}
-            </TranslationText>
-          </View>
-        </View>
-      )}
-
-      {/* Stroke Order Section */}
-      {vocabulary.strokeOrder && vocabulary.strokeOrder.length > 0 && (
-        <View style={styles.strokeOrderSection}>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onPress={() => setShowStrokeOrder(!showStrokeOrder)}
-            style={styles.strokeOrderToggle}
-          >
-            <BookOpen size={16} color={colors.primary[500]} />
-            <TranslationText size="sm" color={colors.primary[500]}>
-              {showStrokeOrder ? 'Ẩn thứ tự nét' : 'Xem thứ tự nét'}
-            </TranslationText>
-          </Button>
-          
-          {showStrokeOrder && (
-            <View style={styles.strokeOrderContainer}>
-              <TranslationText size="sm" weight="medium" style={styles.strokeOrderTitle}>
-                Thứ tự viết nét:
-              </TranslationText>
-              <View style={styles.strokeOrderList}>
-                {vocabulary.strokeOrder.map((stroke, index) => (
-                  <View key={index} style={styles.strokeItem}>
-                    <TranslationText size="xs" color={colors.neutral[600]}>
-                      {index + 1}
-          </TranslationText>
-                    <ChineseText size="lg">{stroke}</ChineseText>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-        </View>
-      )}
-    </Card>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: colors.neutral[50],
+    borderRadius: Layout.isMobile ? 12 : 16,
+    padding: getResponsiveSpacing('lg'),
     marginBottom: getResponsiveSpacing('md'),
-    minHeight: Layout.isMobile ? 180 : 200,
-    },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveSpacing('md'),
+    minHeight: Layout.isMobile ? 150 : 180,
+    shadowColor: colors.neutral[900],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
   },
-  categoryContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: getResponsiveSpacing('sm'),
+
+  pressedContainer: {
+    backgroundColor: colors.neutral[100],
+    transform: [{ scale: 0.98 }],
   },
-  difficultyBadge: {
-    paddingHorizontal: getResponsiveSpacing('sm'),
-    paddingVertical: getResponsiveSpacing('xs'),
-    borderRadius: Layout.isMobile ? 4 : 6,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: getResponsiveSpacing('xs'),
-  },
-  content: {
-    alignItems: 'center',
-    paddingVertical: getResponsiveSpacing('lg'),
-  },
-  toneIndicator: {
+
+  toneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: getResponsiveSpacing('xs'),
     marginBottom: getResponsiveSpacing('sm'),
   },
-  toneDot: {
-    width: Layout.isMobile ? 8 : 10,
-    height: Layout.isMobile ? 8 : 10,
-    borderRadius: Layout.isMobile ? 4 : 5,
+
+  toneIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: getResponsiveSpacing('xs'),
   },
+
+  toneText: {
+    fontSize: getResponsiveFontSize('xs'),
+    fontWeight: '500',
+  },
+
   hanzi: {
+    fontSize: getResponsiveFontSize('5xl'),
+    fontFamily: 'System',
+    color: colors.neutral[900],
     textAlign: 'center',
     marginBottom: getResponsiveSpacing('sm'),
+    fontWeight: '400',
   },
+
   pinyin: {
+    fontSize: getResponsiveFontSize('lg'),
     textAlign: 'center',
     marginBottom: getResponsiveSpacing('md'),
     fontStyle: 'italic',
+    fontWeight: '500',
   },
+
   translations: {
-    alignItems: 'center',
-    gap: getResponsiveSpacing('xs'),
-  },
-  vietnamese: {
-    textAlign: 'center',
-  },
-  progressSection: {
-    borderTopWidth: 1,
-    borderTopColor: colors.neutral[200],
-    paddingTop: getResponsiveSpacing('sm'),
-    marginTop: getResponsiveSpacing('md'),
-  },
-  progressStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  strokeOrderSection: {
-    borderTopWidth: 1,
-    borderTopColor: colors.neutral[200],
-    paddingTop: getResponsiveSpacing('sm'),
-    marginTop: getResponsiveSpacing('md'),
-  },
-  strokeOrderToggle: {
-    alignSelf: 'flex-start',
-    marginBottom: getResponsiveSpacing('sm'),
-  },
-  strokeOrderTitle: {
-    marginBottom: getResponsiveSpacing('sm'),
-  },
-  strokeOrderList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: getResponsiveSpacing('sm'),
-  },
-  strokeItem: {
-    alignItems: 'center',
-    gap: getResponsiveSpacing('xs'),
-  },
-  strokeOrderContainer: {
-    padding: getResponsiveSpacing('sm'),
-    backgroundColor: colors.neutral[50],
-    borderRadius: Layout.isMobile ? 8 : 12,
-  },
-  
-  // Compact variant styles
-  compactContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.neutral[50],
-    padding: getResponsiveSpacing('md'),
-    borderRadius: Layout.isMobile ? 8 : 12,
-    marginBottom: getResponsiveSpacing('sm'),
-    shadowColor: colors.neutral[900],
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  compactContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: getResponsiveSpacing('md'),
-  },
-  compactInfo: {
-    flex: 1,
     gap: getResponsiveSpacing('xs'),
   },
 
-  // Quiz variant styles
-  quizContainer: {
-    minHeight: Layout.isMobile ? 200 : 250,
-    marginBottom: getResponsiveSpacing('md'),
+  vietnamese: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[700],
+    textAlign: 'center',
+    fontWeight: '600',
   },
-  quizContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: getResponsiveSpacing('xl'),
-  },
-  quizFront: {
-    alignItems: 'center',
-    gap: getResponsiveSpacing('lg'),
-  },
-  quizBack: {
-    alignItems: 'center',
-    gap: getResponsiveSpacing('md'),
+
+  english: {
+    fontSize: getResponsiveFontSize('sm'),
+    color: colors.neutral[600],
+    textAlign: 'center',
+    fontWeight: '400',
   },
 }); 

@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -24,8 +26,8 @@ import { AudioButton } from '../../../src/components/common/AudioButton';
 import { HighlightedChineseText } from '../../../src/components/ui/atoms/Text';
 import { SmartSpeechRecognitionComponent } from '../../../src/components/features/pronunciation';
 import { WordAccuracy } from '../../../src/components/features/pronunciation/components/NativeSpeechRecognition/NativeSpeechRecognition';
+import { api } from '../../../src/services/api/client';
 
-// Reading data interface
 interface ReadingPassage {
   id: string;
   title: string;
@@ -47,85 +49,11 @@ interface ReadingQuestion {
   explanation: string;
 }
 
-// Mock reading data
-const readingData: ReadingPassage[] = [
-  {
-    id: '1',
-    title: 'Tự giới thiệu - Self Introduction',
-    content: '我叫李明。我今年二十岁。我是学生。我学习中文。我喜欢看书和听音乐。我的家在北京。我有一个妹妹。她也是学生。',
-    pinyin: 'Wǒ jiào Lǐ Míng. Wǒ jīnnián èrshí suì. Wǒ shì xuésheng. Wǒ xuéxí zhōngwén. Wǒ xǐhuan kànshū hé tīng yīnyuè. Wǒ de jiā zài Běijīng. Wǒ yǒu yí ge mèimei. Tā yě shì xuésheng.',
-    vietnamese: 'Tôi tên là Lý Minh. Năm nay tôi hai mươi tuổi. Tôi là học sinh. Tôi học tiếng Trung. Tôi thích đọc sách và nghe nhạc. Nhà tôi ở Bắc Kinh. Tôi có một em gái. Em ấy cũng là học sinh.',
-    english: 'My name is Li Ming. I am twenty years old this year. I am a student. I study Chinese. I like reading books and listening to music. My home is in Beijing. I have a younger sister. She is also a student.',
-    difficulty: 'beginner',
-    hskLevel: 1,
-    questions: [
-      {
-        id: '1-1',
-        question: 'Lý Minh bao nhiêu tuổi?',
-        type: 'multiple-choice',
-        options: ['18 tuổi', '19 tuổi', '20 tuổi', '21 tuổi'],
-        correctAnswer: 2,
-        explanation: 'Trong bài đọc có câu "我今年二十岁" nghĩa là "Năm nay tôi hai mươi tuổi".',
-      },
-      {
-        id: '1-2',
-        question: 'Lý Minh học gì?',
-        type: 'multiple-choice',
-        options: ['Tiếng Anh', 'Tiếng Trung', 'Toán học', 'Âm nhạc'],
-        correctAnswer: 1,
-        explanation: 'Trong bài có câu "我学习中文" nghĩa là "Tôi học tiếng Trung".',
-      },
-      {
-        id: '1-3',
-        question: 'Lý Minh có bao nhiêu em gái?',
-        type: 'multiple-choice',
-        options: ['Không có', '1 em gái', '2 em gái', '3 em gái'],
-        correctAnswer: 1,
-        explanation: 'Câu "我有一个妹妹" nghĩa là "Tôi có một em gái".',
-      },
-    ],
-  },
-  {
-    id: '2',
-    title: 'Gia đình tôi - My Family',
-    content: '我的家有四口人：爸爸、妈妈、弟弟和我。我爸爸是医生，他四十五岁。我妈妈是老师，她四十二岁。我弟弟今年十六岁，他还在上高中。我们一家人都很健康，很幸福。',
-    pinyin: 'Wǒ de jiā yǒu sì kǒu rén: bàba, māma, dìdi hé wǒ. Wǒ bàba shì yīshēng, tā sìshíwǔ suì. Wǒ māma shì lǎoshī, tā sìshí\'èr suì. Wǒ dìdi jīnnián shíliù suì, tā hái zài shàng gāozhōng. Wǒmen yījiārén dōu hěn jiànkāng, hěn xìngfú.',
-    vietnamese: 'Gia đình tôi có bốn người: bố, mẹ, em trai và tôi. Bố tôi là bác sĩ, ông ấy 45 tuổi. Mẹ tôi là giáo viên, bà ấy 42 tuổi. Em trai tôi năm nay 16 tuổi, em ấy vẫn đang học cấp ba. Cả gia đình chúng tôi đều rất khỏe mạnh và hạnh phúc.',
-    english: 'My family has four people: dad, mom, younger brother and me. My dad is a doctor, he is 45 years old. My mom is a teacher, she is 42 years old. My younger brother is 16 years old this year, he is still in high school. Our whole family is very healthy and happy.',
-    difficulty: 'beginner',
-    hskLevel: 2,
-    questions: [
-      {
-        id: '2-1',
-        question: 'Gia đình này có bao nhiêu người?',
-        type: 'multiple-choice',
-        options: ['3 người', '4 người', '5 người', '6 người'],
-        correctAnswer: 1,
-        explanation: 'Câu đầu tiên "我的家有四口人" có nghĩa là "Gia đình tôi có bốn người".',
-      },
-      {
-        id: '2-2',
-        question: 'Nghề nghiệp của bố là gì?',
-        type: 'multiple-choice',
-        options: ['Giáo viên', 'Bác sĩ', 'Kỹ sư', 'Luật sư'],
-        correctAnswer: 1,
-        explanation: '"我爸爸是医生" nghĩa là "Bố tôi là bác sĩ".',
-      },
-      {
-        id: '2-3',
-        question: 'Em trai đang học ở đâu?',
-        type: 'multiple-choice',
-        options: ['Tiểu học', 'Trung học cơ sở', 'Trung học phổ thông', 'Đại học'],
-        correctAnswer: 2,
-        explanation: '"他还在上高中" nghĩa là "Em ấy vẫn đang học cấp ba/trung học phổ thông".',
-      },
-    ],
-  },
-];
-
 export default function ReadingPracticeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const [readingData, setReadingData] = useState<ReadingPassage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentPassageIndex, setCurrentPassageIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -140,11 +68,115 @@ export default function ReadingPracticeScreen() {
   const fadeAnim = new Animated.Value(1);
   const slideAnim = new Animated.Value(0);
 
+  // Load reading data from API
+  useEffect(() => {
+    loadReadingData();
+  }, []);
+
+  const loadReadingData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get vocabulary data to generate reading passages
+      const vocabularyResponse = await api.vocabulary.getAll();
+      
+      if (vocabularyResponse.success && vocabularyResponse.data) {
+        const vocabulary = vocabularyResponse.data;
+        const generatedPassages = generateReadingPassages(vocabulary);
+        setReadingData(generatedPassages);
+      } else {
+        Alert.alert('Lỗi', 'Không thể tải dữ liệu đọc hiểu. Vui lòng thử lại.');
+        setReadingData([]);
+      }
+    } catch (error) {
+      console.error('Error loading reading data:', error);
+      Alert.alert('Lỗi', 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+      setReadingData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const generateReadingPassages = (vocabulary: any[]): ReadingPassage[] => {
+    // Generate reading passages based on vocabulary data
+    const passages: ReadingPassage[] = [
+      {
+        id: '1',
+        title: 'Tự giới thiệu - Self Introduction',
+        content: '我叫李明。我今年二十岁。我是学生。我学习中文。我喜欢看书和听音乐。我的家在北京。我有一个妹妹。她也是学生。',
+        pinyin: 'Wǒ jiào Lǐ Míng. Wǒ jīnnián èrshí suì. Wǒ shì xuésheng. Wǒ xuéxí zhōngwén. Wǒ xǐhuan kànshū hé tīng yīnyuè. Wǒ de jiā zài Běijīng. Wǒ yǒu yí ge mèimei. Tā yě shì xuésheng.',
+        vietnamese: 'Tôi tên là Lý Minh. Năm nay tôi hai mươi tuổi. Tôi là học sinh. Tôi học tiếng Trung. Tôi thích đọc sách và nghe nhạc. Nhà tôi ở Bắc Kinh. Tôi có một em gái. Em ấy cũng là học sinh.',
+        english: 'My name is Li Ming. I am twenty years old this year. I am a student. I study Chinese. I like reading books and listening to music. My home is in Beijing. I have a younger sister. She is also a student.',
+        difficulty: 'beginner',
+        hskLevel: 1,
+        questions: [
+          {
+            id: '1',
+            question: 'Lý Minh năm nay bao nhiêu tuổi?',
+            type: 'multiple-choice',
+            options: ['18 tuổi', '19 tuổi', '20 tuổi', '21 tuổi'],
+            correctAnswer: 2,
+            explanation: 'Theo đoạn văn: "我今年二十岁" - năm nay tôi hai mươi tuổi.',
+          },
+          {
+            id: '2',
+            question: 'Lý Minh học gì?',
+            type: 'multiple-choice',
+            options: ['Tiếng Anh', 'Tiếng Trung', 'Tiếng Nhật', 'Tiếng Hàn'],
+            correctAnswer: 1,
+            explanation: 'Theo đoạn văn: "我学习中文" - tôi học tiếng Trung.',
+          },
+          {
+            id: '3',
+            question: 'Nhà Lý Minh ở đâu?',
+            type: 'multiple-choice',
+            options: ['Thượng Hải', 'Bắc Kinh', 'Quảng Châu', 'Thâm Quyến'],
+            correctAnswer: 1,
+            explanation: 'Theo đoạn văn: "我的家在北京" - nhà tôi ở Bắc Kinh.',
+          },
+        ],
+      },
+    ];
+    return passages;
+  };
+
+  // Check if data is loaded
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary[500]} />
+          <Text style={styles.loadingText}>Đang tải bài đọc hiểu...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (readingData.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>📚</Text>
+          <Text style={styles.errorText}>Không có bài đọc hiểu</Text>
+          <Text style={styles.errorSubtext}>Vui lòng thử lại sau</Text>
+          <Button
+            variant="primary"
+            onPress={loadReadingData}
+            style={styles.retryButton}
+          >
+            Thử lại
+          </Button>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Current state calculations
   const currentPassage = readingData[currentPassageIndex];
-  const currentQuestion = currentPassage.questions[currentQuestionIndex];
+  const currentQuestion = currentPassage?.questions[currentQuestionIndex];
   const totalQuestions = readingData.reduce((sum: number, passage: ReadingPassage) => sum + passage.questions.length, 0);
-  const answeredQuestions = (currentPassageIndex * currentPassage.questions.length) + currentQuestionIndex;
-  const progress = ((answeredQuestions / totalQuestions) * 100).toFixed(0);
+  const answeredQuestions = readingData.slice(0, currentPassageIndex).reduce((sum, passage) => sum + passage.questions.length, 0) + currentQuestionIndex;
+  const progress = totalQuestions > 0 ? ((answeredQuestions / totalQuestions) * 100).toFixed(0) : '0';
 
   useEffect(() => {
     // Reset animation when question changes
@@ -265,6 +297,22 @@ export default function ReadingPracticeScreen() {
     return (
       <SafeAreaView style={styles.container}>
         {renderCompletionScreen()}
+      </SafeAreaView>
+    );
+  }
+
+  if (!currentPassage || !currentQuestion) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Lỗi tải bài đọc</Text>
+          <Button
+            variant="primary"
+            onPress={() => router.back()}
+          >
+            Quay lại
+          </Button>
+        </View>
       </SafeAreaView>
     );
   }
@@ -823,5 +871,45 @@ const styles = StyleSheet.create({
   speechContainer: {
     marginHorizontal: getResponsiveSpacing('lg'),
     marginBottom: getResponsiveSpacing('lg'),
+  },
+  
+  // Loading and error states
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getResponsiveSpacing('xl'),
+  },
+  loadingText: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[600],
+    marginTop: getResponsiveSpacing('md'),
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: getResponsiveSpacing('xl'),
+  },
+  errorIcon: {
+    fontSize: getResponsiveFontSize('5xl'),
+    marginBottom: getResponsiveSpacing('lg'),
+  },
+  errorText: {
+    fontSize: getResponsiveFontSize('lg'),
+    color: colors.neutral[700],
+    marginBottom: getResponsiveSpacing('md'),
+    textAlign: 'center',
+  },
+  errorSubtext: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[500],
+    textAlign: 'center',
+    marginBottom: getResponsiveSpacing('xl'),
+    lineHeight: 20,
+  },
+  retryButton: {
+    marginTop: getResponsiveSpacing('md'),
   },
 });
