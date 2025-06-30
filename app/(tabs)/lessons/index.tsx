@@ -1,33 +1,46 @@
 import React from 'react';
-import {
-  View,
-  StyleSheet,
-  SafeAreaView,
-} from 'react-native';
-import { colors, getResponsiveSpacing } from '../../../src/theme';
+import { View, Text, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, getResponsiveSpacing, getResponsiveFontSize } from '../../../src/theme';
 import { EnhancedLessonList } from '../../../src/components/features/lessons/components/EnhancedLessonList';
 
-const LessonsScreen: React.FC = () => {
+export default function LessonsScreen() {
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <EnhancedLessonList 
-          showLockedLessons={true}
-        />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Tất cả bài học</Text>
+        <Text style={styles.subtitle}>
+          Hành trình chinh phục tiếng Trung của bạn
+        </Text>
       </View>
+      <EnhancedLessonList />
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.neutral[50],
   },
-  
-  content: {
-    flex: 1,
+  header: {
+    paddingHorizontal: getResponsiveSpacing('lg'),
+    paddingTop: getResponsiveSpacing('md'),
+    paddingBottom: getResponsiveSpacing('lg'),
+    backgroundColor: colors.neutral[50],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[200],
+  },
+  title: {
+    fontSize: getResponsiveFontSize('2xl'),
+    fontWeight: 'bold',
+    color: colors.neutral[900],
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[600],
+    textAlign: 'center',
+    marginTop: getResponsiveSpacing('xs'),
   },
 });
-
-export default LessonsScreen;

@@ -74,7 +74,7 @@ export default function ProgressScreen() {
       setIsLoading(true);
       
       // For now, use a mock user ID (in real app, get from auth context)
-      const userId = 'user-1';
+      const userId = '550e8400-e29b-41d4-a716-446655440000';
       
       // Load all progress data in parallel
       const [weeklyResponse, skillsResponse, achievementsResponse, statsResponse] = await Promise.all([

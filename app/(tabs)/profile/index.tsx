@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,28 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Image,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 // Import components and theme
-import { colors, getResponsiveSpacing, getResponsiveFontSize, device } from '../../../src/theme';
+import {
+  colors,
+  getResponsiveSpacing,
+  getResponsiveFontSize,
+  device,
+  Layout,
+} from '../../../src/theme';
 import { useTranslation } from '../../../src/localization';
 import { Button } from '../../../src/components/ui/atoms/Button';
 import { Card } from '../../../src/components/ui/atoms/Card';
+import { ProgressBar } from '../../../src/components/ui/molecules/ProgressBar';
+import { useAuth } from '../../../src/contexts/AuthContext';
+import { api } from '../../../src/services/api/client';
+import { LoadingSpinner } from '../../../src/components/ui/atoms/LoadingSpinner';
 
 interface UserStats {
   totalWords: number;
@@ -39,325 +52,261 @@ interface Achievement {
 }
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { t } = useTranslation();
-  const [user] = useState({
-    name: 'Học viên',
-    email: 'hocvien@example.com',
-    avatar: null,
-    joinDate: '2024-01-15',
-    currentLevel: 'HSK 1',
+  const { user, logout } = useAuth();
+  
+  // State
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [userStats, setUserStats] = useState<UserStats>({
+    totalWords: 0,
+    studyDays: 0,
+    currentStreak: 0,
+    totalMinutes: 0,
+    hskLevel: 0,
+    accuracy: 0,
+    xpPoints: 0,
+    rank: 'Beginner',
   });
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
 
-  const [userStats] = useState<UserStats>({
-    totalWords: 245,
-    studyDays: 45,
-    currentStreak: 7,
-    totalMinutes: 1250,
-    hskLevel: 1,
-    accuracy: 94,
-    xpPoints: 1580,
-    rank: 'Beginner Scholar',
-  });
+  useEffect(() => {
+    fetchUserData();
+  }, []);
 
-  const [achievements] = useState<Achievement[]>([
-    {
-      id: '1',
-      title: 'First Steps',
-      description: 'Complete your first lesson',
-      icon: 'footsteps-outline',
-      isUnlocked: true,
-      progress: 1,
-      maxProgress: 1,
-    },
-    {
-      id: '2',
-      title: 'Word Master',
-      description: 'Learn 100 words',
-      icon: 'book-outline',
-      isUnlocked: true,
-      progress: 245,
-      maxProgress: 100,
-    },
-    {
-      id: '3',
-      title: 'Streak Keeper',
-      description: 'Study for 7 days in a row',
-      icon: 'flame-outline',
-      isUnlocked: true,
-      progress: 7,
-      maxProgress: 7,
-    },
-    {
-      id: '4',
-      title: 'Pronunciation Pro',
-      description: 'Perfect pronunciation 50 times',
-      icon: 'mic-outline',
-      isUnlocked: false,
-      progress: 23,
-      maxProgress: 50,
-    },
-    {
-      id: '5',
-      title: 'Character Artist',
-      description: 'Write 200 characters correctly',
-      icon: 'brush-outline',
-      isUnlocked: false,
-      progress: 87,
-      maxProgress: 200,
-    },
-    {
-      id: '6',
-      title: 'Time Master',
-      description: 'Study for 100 hours total',
-      icon: 'time-outline',
-      isUnlocked: false,
-      progress: 21,
-      maxProgress: 100,
-    },
-  ]);
+  const fetchUserData = async () => {
+    try {
+      if (user) {
+        // Fetch user stats and achievements
+        const [statsResponse, achievementsResponse] = await Promise.all([
+          api.progress.getOverallStats(user.id),
+          api.progress.getAchievements(user.id),
+        ]);
 
-  const settingsOptions = [
-    {
-      id: 'language',
-      title: 'Language / Ngôn ngữ',
-      subtitle: 'Change app language',
-      icon: 'language-outline',
-      onPress: () => console.log('Change language'),
-    },
-    {
-      id: 'notifications',
-      title: 'Notifications / Thông báo',
-      subtitle: 'Study reminders & updates',
-      icon: 'notifications-outline',
-      onPress: () => console.log('Notifications settings'),
-    },
-    {
-      id: 'audio',
-      title: 'Audio Settings / Cài đặt âm thanh',
-      subtitle: 'Voice speed & quality',
-      icon: 'volume-high-outline',
-      onPress: () => console.log('Audio settings'),
-    },
-    {
-      id: 'backup',
-      title: 'Backup & Sync / Sao lưu',
-      subtitle: 'Cloud backup settings',
-      icon: 'cloud-outline',
-      onPress: () => console.log('Backup settings'),
-    },
-    {
-      id: 'help',
-      title: 'Help & Support / Hỗ trợ',
-      subtitle: 'Get help and contact us',
-      icon: 'help-circle-outline',
-      onPress: () => console.log('Help & support'),
-    },
-    {
-      id: 'about',
-      title: 'About / Về ứng dụng',
-      subtitle: 'App version and info',
-      icon: 'information-circle-outline',
-      onPress: () => console.log('About app'),
-    },
+        if (statsResponse.success && statsResponse.data) {
+          const stats = statsResponse.data;
+          setUserStats({
+            totalWords: stats.wordsLearned || 0,
+            studyDays: stats.completedLessons || 0,
+            currentStreak: stats.currentStreak || 0,
+            totalMinutes: stats.totalPracticeTime || 0,
+            hskLevel: stats.level || 0,
+            accuracy: stats.accuracy || 0,
+            xpPoints: stats.totalXp || 0,
+            rank: stats.rank || 'Beginner',
+          });
+        }
+
+        if (achievementsResponse.success && achievementsResponse.data) {
+          setAchievements(achievementsResponse.data.slice(0, 6)); // Show top 6
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchUserData();
+    setIsRefreshing(false);
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Đăng xuất',
+      'Bạn có chắc chắn muốn đăng xuất?',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Đăng xuất',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/auth/login');
+          },
+        },
+      ]
+    );
+  };
+
+  const settingsItems = [
+    { id: 'account', icon: 'person-outline', label: 'Tài khoản', route: '/settings/account' },
+    { id: 'learning', icon: 'school-outline', label: 'Cài đặt học tập', route: '/settings/learning' },
+    { id: 'notifications', icon: 'notifications-outline', label: 'Thông báo', route: '/settings/notifications' },
+    { id: 'language', icon: 'language-outline', label: 'Ngôn ngữ', route: '/settings/language' },
+    { id: 'help', icon: 'help-circle-outline', label: 'Trợ giúp', route: '/settings/help' },
+    { id: 'about', icon: 'information-circle-outline', label: 'Về ứng dụng', route: '/settings/about' },
   ];
 
-  const renderProfileHeader = () => (
-    <View style={styles.profileHeader}>
-      <LinearGradient
-        colors={[colors.primary[500], colors.primary[600]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.profileGradient}
-      >
-        <View style={styles.profileContent}>
-          {/* Avatar */}
-          <View style={styles.avatarContainer}>
-            {user.avatar ? (
-              <Image source={{ uri: user.avatar }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="person" size={40} color={colors.neutral[600]} />
-              </View>
-            )}
-            <TouchableOpacity style={styles.editAvatarButton}>
-              <Ionicons name="camera" size={16} color={colors.neutral[50]} />
-            </TouchableOpacity>
-          </View>
+  const studyStats = [
+    { label: 'Từ đã học', value: userStats.totalWords, icon: 'book-outline' },
+    { label: 'Bài hoàn thành', value: userStats.studyDays, icon: 'checkmark-circle-outline' },
+    { label: 'Thời gian học', value: `${userStats.totalMinutes / 60}h`, icon: 'time-outline' },
+    { label: 'Độ chính xác', value: `${userStats.accuracy}%`, icon: 'stats-chart-outline' },
+  ];
 
-          {/* User Info */}
-          <Text style={styles.userName}>{user.name}</Text>
-          <Text style={styles.userLevel}>{user.currentLevel}</Text>
-          <Text style={styles.userRank}>{userStats.rank}</Text>
+  // Mock achievements - in production, fetch from API
+  const defaultAchievements = [
+    { id: '1', title: 'Người mới bắt đầu', icon: 'star', color: colors.warning[500], earned: true },
+    { id: '2', title: '7 ngày liên tiếp', icon: 'flame', color: colors.error[500], earned: true },
+    { id: '3', title: 'Học 50 từ', icon: 'trophy', color: colors.secondary[500], earned: true },
+    { id: '4', title: 'Hoàn thành HSK1', icon: 'medal', color: colors.primary[500], earned: false },
+    { id: '5', title: 'Thạc sĩ phát âm', icon: 'mic', color: colors.accent[500], earned: false },
+    { id: '6', title: 'Bậc thầy chữ Hán', icon: 'brush', color: colors.neutral[600], earned: false },
+  ];
 
-          {/* Quick Stats */}
-          <View style={styles.quickStats}>
-            <View style={styles.quickStat}>
-              <Text style={styles.quickStatValue}>{userStats.xpPoints}</Text>
-              <Text style={styles.quickStatLabel}>XP</Text>
-            </View>
-            <View style={styles.quickStat}>
-              <Text style={styles.quickStatValue}>{userStats.currentStreak}</Text>
-              <Text style={styles.quickStatLabel}>Streak</Text>
-            </View>
-            <View style={styles.quickStat}>
-              <Text style={styles.quickStatValue}>{userStats.totalWords}</Text>
-              <Text style={styles.quickStatLabel}>Words</Text>
-            </View>
-          </View>
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <LoadingSpinner />
+          <Text style={styles.loadingText}>Đang tải thông tin...</Text>
         </View>
-      </LinearGradient>
-    </View>
-  );
-
-  const renderStatistics = () => (
-    <Card style={styles.statsCard}>
-      <Text style={styles.sectionTitle}>Thống kê học tập</Text>
-      <View style={styles.statsGrid}>
-        <View style={styles.statItem}>
-          <View style={styles.statIcon}>
-            <Ionicons name="library-outline" size={20} color={colors.primary[500]} />
-          </View>
-          <Text style={styles.statValue}>{userStats.totalWords}</Text>
-          <Text style={styles.statLabel}>Từ đã học</Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <View style={styles.statIcon}>
-            <Ionicons name="calendar-outline" size={20} color={colors.secondary[500]} />
-          </View>
-          <Text style={styles.statValue}>{userStats.studyDays}</Text>
-          <Text style={styles.statLabel}>Ngày học</Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <View style={styles.statIcon}>
-            <Ionicons name="time-outline" size={20} color={colors.accent[500]} />
-          </View>
-          <Text style={styles.statValue}>{Math.round(userStats.totalMinutes / 60)}h</Text>
-          <Text style={styles.statLabel}>Thời gian</Text>
-        </View>
-
-        <View style={styles.statItem}>
-          <View style={styles.statIcon}>
-            <Ionicons name="checkmark-circle-outline" size={20} color={colors.warning[500]} />
-          </View>
-          <Text style={styles.statValue}>{userStats.accuracy}%</Text>
-          <Text style={styles.statLabel}>Độ chính xác</Text>
-        </View>
-      </View>
-    </Card>
-  );
-
-  const renderAchievements = () => (
-    <Card style={styles.achievementsCard}>
-      <View style={styles.achievementsHeader}>
-        <Text style={styles.sectionTitle}>Thành tích</Text>
-        <TouchableOpacity>
-          <Text style={styles.viewAllText}>Xem tất cả</Text>
-        </TouchableOpacity>
-      </View>
-      
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.achievementsWrapper}>
-          {achievements.map((achievement) => (
-            <TouchableOpacity 
-              key={achievement.id} 
-              style={[
-                styles.achievementCard,
-                achievement.isUnlocked && styles.achievementUnlocked
-              ]}
-            >
-              <View style={[
-                styles.achievementIcon,
-                achievement.isUnlocked 
-                  ? { backgroundColor: colors.primary[500] }
-                  : { backgroundColor: colors.neutral[300] }
-              ]}>
-                <Ionicons 
-                  name={achievement.icon as any} 
-                  size={24} 
-                  color={achievement.isUnlocked ? colors.neutral[50] : colors.neutral[500]} 
-                />
-              </View>
-              <Text style={[
-                styles.achievementTitle,
-                !achievement.isUnlocked && styles.achievementTitleLocked
-              ]}>
-                {achievement.title}
-              </Text>
-              {!achievement.isUnlocked && (
-                <View style={styles.achievementProgress}>
-                  <View style={styles.achievementProgressBg}>
-                    <View 
-                      style={[
-                        styles.achievementProgressFill,
-                        { width: `${(achievement.progress / achievement.maxProgress) * 100}%` }
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.achievementProgressText}>
-                    {achievement.progress}/{achievement.maxProgress}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-    </Card>
-  );
-
-  const renderSettings = () => (
-    <Card style={styles.settingsCard}>
-      <Text style={styles.sectionTitle}>Cài đặt</Text>
-      <View style={styles.settingsList}>
-        {settingsOptions.map((option) => (
-          <TouchableOpacity 
-            key={option.id} 
-            style={styles.settingItem}
-            onPress={option.onPress}
-          >
-            <View style={styles.settingIcon}>
-              <Ionicons name={option.icon as any} size={20} color={colors.primary[500]} />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={styles.settingTitle}>{option.title}</Text>
-              <Text style={styles.settingSubtitle}>{option.subtitle}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color={colors.neutral[400]} />
-          </TouchableOpacity>
-        ))}
-      </View>
-    </Card>
-  );
-
-  const renderLogoutButton = () => (
-    <Card style={styles.logoutCard}>
-      <Button
-        variant="outline"
-        size="md"
-        onPress={() => console.log('Logout')}
-        style={styles.logoutButton}
-      >
-        Đăng xuất
-      </Button>
-    </Card>
-  );
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary[500]]}
+            tintColor={colors.primary[500]}
+          />
+        }
       >
-        {renderProfileHeader()}
-        {renderStatistics()}
-        {renderAchievements()}
-        {renderSettings()}
-        {renderLogoutButton()}
-        
-        {/* Bottom spacing for tab bar */}
+        {/* Profile Header */}
+        <View style={styles.header}>
+          <View style={styles.profileSection}>
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarText}>
+                  {user?.fullName?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.userName}>{user?.fullName || 'Người dùng'}</Text>
+            <Text style={styles.userLevel}>HSK {userStats.hskLevel}</Text>
+            
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{userStats.xpPoints}</Text>
+                <Text style={styles.statLabel}>XP</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Ionicons name="flame" size={20} color={colors.warning[500]} />
+                <Text style={styles.statValue}>{userStats.currentStreak}</Text>
+                <Text style={styles.statLabel}>Streak</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{userStats.totalWords}</Text>
+                <Text style={styles.statLabel}>Từ</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Study Statistics */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Thống kê học tập</Text>
+          <View style={styles.studyStatsGrid}>
+            {studyStats.map((stat, index) => (
+              <Card key={index} variant="default" style={styles.studyStatCard}>
+                <Ionicons 
+                  name={stat.icon as any} 
+                  size={24} 
+                  color={colors.primary[500]} 
+                />
+                <Text style={styles.studyStatValue}>{stat.value}</Text>
+                <Text style={styles.studyStatLabel}>{stat.label}</Text>
+              </Card>
+            ))}
+          </View>
+        </View>
+
+        {/* Achievements */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Thành tựu</Text>
+          <View style={styles.achievementsGrid}>
+            {(achievements.length > 0 ? achievements : defaultAchievements).map((achievement) => (
+              <TouchableOpacity
+                key={achievement.id}
+                style={[
+                  styles.achievementItem,
+                  !achievement.earned && styles.achievementLocked,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.achievementIcon,
+                    { backgroundColor: achievement.earned ? achievement.color + '20' : colors.neutral[200] },
+                  ]}
+                >
+                  <Ionicons
+                    name={achievement.icon}
+                    size={24}
+                    color={achievement.earned ? achievement.color : colors.neutral[400]}
+                  />
+                </View>
+                <Text style={styles.achievementTitle}>{achievement.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Settings Menu */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Cài đặt</Text>
+          {settingsItems.map((item, index) => (
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.settingsItem,
+                index === settingsItems.length - 1 && styles.lastSettingsItem,
+              ]}
+              onPress={() => {
+                // Navigate to settings page
+                Alert.alert('Thông báo', `Tính năng ${item.label} đang được phát triển`);
+              }}
+            >
+              <View style={styles.settingsItemLeft}>
+                <Ionicons
+                  name={item.icon as any}
+                  size={24}
+                  color={colors.neutral[600]}
+                />
+                <Text style={styles.settingsItemText}>{item.label}</Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.neutral[400]}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Logout Button */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color={colors.error[500]} />
+          <Text style={styles.logoutText}>Đăng xuất</Text>
+        </TouchableOpacity>
+
+        {/* Bottom spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
@@ -372,22 +321,25 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    paddingTop: getResponsiveSpacing('sm'),
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: getResponsiveSpacing('md'),
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.neutral[600],
   },
 
   // Profile header
-  profileHeader: {
+  header: {
     marginHorizontal: getResponsiveSpacing('lg'),
     marginBottom: getResponsiveSpacing('lg'),
     borderRadius: device.isMobile ? 16 : 20,
     overflow: 'hidden',
   },
-  profileGradient: {
-    paddingVertical: getResponsiveSpacing('2xl'),
-    paddingHorizontal: getResponsiveSpacing('xl'),
-  },
-  profileContent: {
+  profileSection: {
     alignItems: 'center',
   },
   avatarContainer: {
@@ -407,18 +359,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  editAvatarButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primary[600],
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.neutral[50],
+  avatarText: {
+    fontSize: getResponsiveFontSize('xl'),
+    fontWeight: '700',
+    color: colors.neutral[50],
   },
   userName: {
     fontSize: getResponsiveFontSize('xl'),
@@ -431,58 +375,12 @@ const styles = StyleSheet.create({
     color: colors.neutral[100],
     marginBottom: getResponsiveSpacing('xs'),
   },
-  userRank: {
-    fontSize: getResponsiveFontSize('sm'),
-    color: colors.neutral[200],
-    marginBottom: getResponsiveSpacing('lg'),
-  },
-  quickStats: {
+  statsRow: {
     flexDirection: 'row',
     gap: getResponsiveSpacing('xl'),
   },
-  quickStat: {
-    alignItems: 'center',
-  },
-  quickStatValue: {
-    fontSize: getResponsiveFontSize('lg'),
-    fontWeight: '700',
-    color: colors.neutral[50],
-  },
-  quickStatLabel: {
-    fontSize: getResponsiveFontSize('xs'),
-    color: colors.neutral[200],
-    marginTop: getResponsiveSpacing('xs'),
-  },
-
-  // Statistics card
-  statsCard: {
-    marginHorizontal: getResponsiveSpacing('lg'),
-    marginBottom: getResponsiveSpacing('lg'),
-    padding: getResponsiveSpacing('xl'),
-  },
-  sectionTitle: {
-    fontSize: getResponsiveFontSize('lg'),
-    fontWeight: '700',
-    color: colors.neutral[900],
-    marginBottom: getResponsiveSpacing('lg'),
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: getResponsiveSpacing('lg'),
-  },
   statItem: {
-    width: device.isMobile ? '47%' : '22%',
     alignItems: 'center',
-  },
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.neutral[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: getResponsiveSpacing('sm'),
   },
   statValue: {
     fontSize: getResponsiveFontSize('xl'),
@@ -495,129 +393,118 @@ const styles = StyleSheet.create({
     color: colors.neutral[600],
     textAlign: 'center',
   },
+  statDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: colors.neutral[300],
+  },
 
-  // Achievements card
-  achievementsCard: {
-    marginHorizontal: getResponsiveSpacing('lg'),
+  // Study statistics section
+  section: {
+    marginTop: getResponsiveSpacing('xl'),
+    paddingHorizontal: getResponsiveSpacing('lg'),
+  },
+  sectionTitle: {
+    fontSize: getResponsiveFontSize('lg'),
+    fontWeight: '700',
+    color: colors.neutral[900],
     marginBottom: getResponsiveSpacing('lg'),
-    padding: getResponsiveSpacing('xl'),
   },
-  achievementsHeader: {
+
+  // Study statistics
+  studyStatsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveSpacing('lg'),
-  },
-  viewAllText: {
-    fontSize: getResponsiveFontSize('sm'),
-    color: colors.primary[600],
-    fontWeight: '600',
-  },
-  achievementsWrapper: {
-    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: getResponsiveSpacing('md'),
-    paddingRight: getResponsiveSpacing('lg'),
   },
-  achievementCard: {
-    width: device.isMobile ? 120 : 140,
-    backgroundColor: colors.neutral[100],
-    borderRadius: 12,
-    padding: getResponsiveSpacing('md'),
+  studyStatCard: {
+    flex: 1,
+    minWidth: device.isMobile ? '47%' : '23%',
+    padding: getResponsiveSpacing('lg'),
     alignItems: 'center',
   },
-  achievementUnlocked: {
-    backgroundColor: colors.primary[50],
-    borderWidth: 1,
-    borderColor: colors.primary[200],
+  studyStatValue: {
+    fontSize: getResponsiveFontSize('xl'),
+    fontWeight: '700',
+    color: colors.neutral[900],
+    marginTop: getResponsiveSpacing('sm'),
+  },
+  studyStatLabel: {
+    fontSize: getResponsiveFontSize('xs'),
+    color: colors.neutral[600],
+    marginTop: getResponsiveSpacing('xs'),
+  },
+
+  // Achievements
+  achievementsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: getResponsiveSpacing('md'),
+  },
+  achievementItem: {
+    width: device.isMobile ? '30%' : '15%',
+    alignItems: 'center',
+  },
+  achievementLocked: {
+    opacity: 0.5,
   },
   achievementIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: getResponsiveSpacing('sm'),
   },
   achievementTitle: {
     fontSize: getResponsiveFontSize('xs'),
-    fontWeight: '600',
-    color: colors.neutral[900],
+    color: colors.neutral[600],
     textAlign: 'center',
-    marginBottom: getResponsiveSpacing('sm'),
-  },
-  achievementTitleLocked: {
-    color: colors.neutral[600],
-  },
-  achievementProgress: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  achievementProgressBg: {
-    width: '100%',
-    height: 4,
-    backgroundColor: colors.neutral[300],
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginBottom: getResponsiveSpacing('xs'),
-  },
-  achievementProgressFill: {
-    height: '100%',
-    backgroundColor: colors.primary[500],
-  },
-  achievementProgressText: {
-    fontSize: getResponsiveFontSize('xs'),
-    color: colors.neutral[600],
   },
 
-  // Settings card
-  settingsCard: {
-    marginHorizontal: getResponsiveSpacing('lg'),
-    marginBottom: getResponsiveSpacing('lg'),
-    padding: getResponsiveSpacing('xl'),
-  },
-  settingsList: {
-    gap: getResponsiveSpacing('md'),
-  },
-  settingItem: {
+  // Settings
+  settingsItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: getResponsiveSpacing('sm'),
+    justifyContent: 'space-between',
+    paddingVertical: getResponsiveSpacing('md'),
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[200],
   },
-  settingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.neutral[100],
-    justifyContent: 'center',
+  lastSettingsItem: {
+    borderBottomWidth: 0,
+  },
+  settingsItemLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: getResponsiveSpacing('md'),
+    gap: getResponsiveSpacing('md'),
   },
-  settingContent: {
-    flex: 1,
-  },
-  settingTitle: {
+  settingsItemText: {
     fontSize: getResponsiveFontSize('base'),
-    fontWeight: '600',
-    color: colors.neutral[900],
-    marginBottom: getResponsiveSpacing('xs'),
-  },
-  settingSubtitle: {
-    fontSize: getResponsiveFontSize('xs'),
-    color: colors.neutral[600],
+    color: colors.neutral[800],
   },
 
-  // Logout card
-  logoutCard: {
-    marginHorizontal: getResponsiveSpacing('lg'),
-    marginBottom: getResponsiveSpacing('lg'),
-    padding: getResponsiveSpacing('lg'),
-  },
+  // Logout
   logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: getResponsiveSpacing('sm'),
+    marginTop: getResponsiveSpacing('2xl'),
+    marginBottom: getResponsiveSpacing('lg'),
+    marginHorizontal: getResponsiveSpacing('lg'),
+    paddingVertical: getResponsiveSpacing('md'),
+    borderRadius: device.isMobile ? 12 : 16,
+    borderWidth: 1,
     borderColor: colors.error[500],
   },
+  logoutText: {
+    fontSize: getResponsiveFontSize('base'),
+    color: colors.error[500],
+    fontWeight: '600',
+  },
 
-  // Bottom spacing
   bottomSpacing: {
-    height: getResponsiveSpacing('xl'),
+    height: getResponsiveSpacing('3xl'),
   },
 }); 

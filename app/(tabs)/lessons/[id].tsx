@@ -17,150 +17,12 @@ import { lessonsService, Lesson } from '../../../src/services/lessonsService';
 import { useVocabulary } from '../../../src/hooks/useVocabulary';
 import { VocabularyCard } from '../../../src/components/features/vocabulary';
 import { VocabularyItemAPI } from '../../../src/services/api/vocabulary.api';
+import { useSequentialLearning } from '../../../src/hooks/useSequentialLearning';
+import { LessonExercise } from '../../../src/components/features/lessons/components/LessonExercise';
+import { LessonProgress } from '../../../src/components/features/lessons/components/LessonProgress';
+import { LessonGameification } from '../../../src/components/features/lessons/components/LessonGameification';
 
 const { width } = Dimensions.get('window');
-
-// Keep existing interfaces for grammar and lesson structure
-interface GrammarPoint {
-  id: string;
-  title: string;
-  explanation: string;
-  example: string;
-  translation: string;
-}
-
-interface LessonData {
-  id: string;
-  title: string;
-  description: string;
-  level: string;
-  progress: number;
-  grammar: GrammarPoint[];
-  totalItems: number;
-  completedItems: number;
-}
-
-const lessonData: Record<string, LessonData> = {
-  // === LEVEL 1: HSK 1 Foundation ===
-  'chao-hoi': {
-    id: 'chao-hoi',
-    title: 'Chào hỏi & Giới thiệu',
-    description: 'Làm quen với các cách chào hỏi cơ bản và cách giới thiệu bản thân',
-    level: 'HSK 1',
-    progress: 100,
-    totalItems: 15,
-    completedItems: 15,
-    grammar: [
-      {
-        id: '1',
-        title: 'Cấu trúc "A 是 B" (A là B)',
-        explanation: 'Cấu trúc cơ bản nhất: Chủ ngữ + 是 + Tân ngữ. Dùng để giới thiệu, xác định danh tính.',
-        example: '我是学生。你是老师。',
-        translation: 'Tôi là học sinh. Bạn là giáo viên.'
-      },
-      {
-        id: '2', 
-        title: 'Cấu trúc "我叫..." (Tôi tên là...)',
-        explanation: 'Dùng để giới thiệu tên: 我叫 + tên. Thân thiện hơn "我是..."',
-        example: '我叫李明。你叫什么名字？',
-        translation: 'Tôi tên là Lý Minh. Bạn tên là gì?'
-      },
-      {
-        id: '3',
-        title: 'Xin lỗi và đáp lại',
-        explanation: 'Dùng 对不起 để xin lỗi nghiêm túc và 没关系 để đáp lại "không sao"',
-        example: 'A: 对不起，我迟到了。 B: 没关系。',
-        translation: 'A: Xin lỗi, tôi đến muộn. B: Không sao.'
-      },
-      {
-        id: '4',
-        title: 'Đại từ nhân xưng và cách dùng',
-        explanation: '我 (tôi), 你 (bạn), 他/她 (anh ấy/cô ấy). Lưu ý: 你 thân mật, 您 lịch sự.',
-        example: '我是学生，你是老师，他是医生。',
-        translation: 'Tôi là học sinh, bạn là giáo viên, anh ấy là bác sĩ.'
-      }
-    ]
-  },
-
-  'gia-dinh': {
-    id: 'gia-dinh',
-    title: 'Gia đình & Mối quan hệ',
-    description: 'Học từ vựng về thành viên gia đình và cách mô tả mối quan hệ',
-    level: 'HSK 1',
-    progress: 85,
-    totalItems: 12,
-    completedItems: 10,
-    grammar: [
-      {
-        id: '1',
-        title: 'Cấu trúc sở hữu "我的..." (của tôi)',
-        explanation: 'Thêm 的 sau đại từ để chỉ sở hữu: 我的, 你的, 他的',
-        example: '这是我的爸爸，那是我的妈妈。',
-        translation: 'Đây là bố tôi, kia là mẹ tôi.'
-      },
-      {
-        id: '2',
-        title: 'Câu hỏi "有几个...?" (có mấy...?)',
-        explanation: 'Dùng để hỏi số lượng thành viên trong gia đình',
-        example: '你家有几个人？我家有四个人。',
-        translation: 'Nhà bạn có mấy người? Nhà tôi có bốn người.'
-      }
-    ]
-  },
-
-  'so-dem': {
-    id: 'so-dem',
-    title: 'Số đếm & Thời gian',
-    description: 'Học cách đếm số từ 1-100 và biểu đạt thời gian cơ bản',
-    level: 'HSK 1',
-    progress: 75,
-    totalItems: 15,
-    completedItems: 11,
-    grammar: [
-      {
-        id: '1',
-        title: 'Quy tắc số đếm 11-99',
-        explanation: '十一, 十二, ... 二十, 二十一, ... Cấu trúc: [chục][đơn vị]',
-        example: '十一，二十，二十五，九十九',
-        translation: 'Mười một, hai mười, hai mười lăm, chín mười chín'
-      },
-      {
-        id: '2',
-        title: 'Nói giờ: "X点Y分" (X giờ Y phút)',
-        explanation: 'Giờ + 点 + phút + 分. Lưu ý: "半" = 30 phút',
-        example: '现在八点三十分。/ 现在八点半。',
-        translation: 'Bây giờ là 8 giờ 30 phút. / Bây giờ là 8 giờ rưỡi.'
-      }
-    ]
-  },
-
-  // === LEVEL 2: HSK 2 Intermediate ===
-  'mua-sam': {
-    id: 'mua-sam',
-    title: 'Mua sắm & Giao dịch',
-    description: 'Học từ vựng và cấu trúc câu để mua sắm, hỏi giá, và giao dịch',
-    level: 'HSK 2',
-    progress: 60,
-    totalItems: 18,
-    completedItems: 11,
-    grammar: [
-      {
-        id: '1',
-        title: 'Phương hướng và vị trí: "在...的..." (ở ... của ...)',
-        explanation: 'Diễn tả vị trí tương đối: 在 + địa điểm + 的 + phương hướng',
-        example: '银行在超市的左边。',
-        translation: 'Ngân hàng ở bên trái siêu thị.'
-      },
-      {
-        id: '2',
-        title: 'Hỏi đường: "...怎么走?" (đi ... như thế nào?)',
-        explanation: 'Cấu trúc hỏi đường cơ bản',
-        example: '请问，去机场怎么走？',
-        translation: 'Xin hỏi, đi sân bay như thế nào?'
-      }
-    ]
-  }
-};
 
 export default function LessonDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -180,6 +42,7 @@ export default function LessonDetail() {
 
   // Use new vocabulary hook
   const { vocabularyItems, isLoading: vocabularyLoading, error: vocabularyError, refetch } = useVocabulary(id || '');
+  const { updateLessonProgress, completeExercise, nextLesson } = useSequentialLearning();
 
   // Fetch lesson data
   const fetchLessonData = async () => {
@@ -382,11 +245,6 @@ export default function LessonDetail() {
   };
 
   const renderPracticeTab = () => {
-    // Import components
-    const { LessonExercise } = require('../../../src/components/features/lessons/components/LessonExercise');
-    const { LessonProgress } = require('../../../src/components/features/lessons/components/LessonProgress');
-    const { LessonGameification } = require('../../../src/components/features/lessons/components/LessonGameification');
-    
     return (
       <ScrollView style={styles.practiceContainer} showsVerticalScrollIndicator={false}>
         {lesson ? (
@@ -415,28 +273,36 @@ export default function LessonDetail() {
             {/* Main Exercise Content */}
             <LessonExercise
               lessonId={lesson.id}
-              onComplete={(score, total) => {
-                Alert.alert(
-                  'Hoàn thành bài tập! 🎉',
-                  `Bạn đã làm đúng ${score}/${total} câu (${Math.round((score/total)*100)}%)\n\nTiếp tục cố gắng!`,
-                  [
-                    { 
-                      text: 'Xem lại bài học', 
-                      onPress: () => setActiveTab('overview') 
-                    },
-                    { 
-                      text: 'Làm lại bài tập', 
-                      onPress: () => {
-                        // Force component to re-render by changing key
-                        setActiveTab('vocabulary');
-                        setTimeout(() => setActiveTab('practice'), 100);
-                      }
-                    }
-                  ]
-                );
+              onComplete={async (score, total) => {
+                const percentage = Math.round((score / total) * 100);
+                try {
+                  await updateLessonProgress(lesson.id, 100, percentage);
+                  let message = `Bạn đã hoàn thành bài ${lesson.order}!`;
+                  if (nextLesson && nextLesson.lesson.id !== lesson.id) {
+                    message += `\nBài học tiếp theo (Bài ${nextLesson.lesson.order}: ${nextLesson.lesson.titleVi}) đã được mở khóa!`;
+                  }
+                  Alert.alert(
+                    'Hoàn thành bài học! 🎉',
+                    message,
+                    [
+                      { text: 'Quay lại danh sách', onPress: () => router.back() },
+                      nextLesson && nextLesson.lesson.id !== lesson.id
+                        ? { text: 'Bài tiếp theo', onPress: () => router.push(`/(tabs)/lessons/${nextLesson.lesson.id}`) }
+                        : { text: 'OK' },
+                    ]
+                  );
+                } catch (error) {
+                  console.error('Error updating lesson progress:', error);
+                  Alert.alert('Lỗi', 'Không thể cập nhật tiến độ. Vui lòng thử lại.');
+                }
               }}
-              onExerciseComplete={(exerciseId, isCorrect) => {
-                console.log(`Exercise ${exerciseId}: ${isCorrect ? 'Correct ✅' : 'Incorrect ❌'}`);
+              onExerciseComplete={async (exerciseId, isCorrect) => {
+                try {
+                  await completeExercise(lesson.id, exerciseId, isCorrect ? 1 : 0);
+                  console.log(`Exercise ${exerciseId}: ${isCorrect ? 'Correct ✅' : 'Incorrect ❌'}`);
+                } catch (error) {
+                  console.error('Error completing exercise:', error);
+                }
               }}
               showProgress={true}
               allowReview={true}
@@ -452,18 +318,7 @@ export default function LessonDetail() {
     );
   };
 
-  const tabs = [
-    { id: 'overview', label: 'Tổng quan', icon: '📋' },
-    { id: 'vocabulary', label: 'Từ vựng', icon: '📚' },
-    { id: 'practice', label: 'Luyện tập', icon: '🎯' },
-    { id: 'progress', label: 'Tiến độ', icon: '📊' },
-  ];
-
   const renderProgressTab = () => {
-    // Import components
-    const { LessonProgress } = require('../../../src/components/features/lessons/components/LessonProgress');
-    const { LessonGameification } = require('../../../src/components/features/lessons/components/LessonGameification');
-    
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         {lesson ? (
@@ -513,6 +368,12 @@ export default function LessonDetail() {
         return renderOverviewTab();
     }
   };
+
+  const tabs = [
+    { id: 'vocabulary', label: 'Từ vựng', icon: '📚' },
+    { id: 'practice', label: 'Luyện tập', icon: '🎯' },
+    { id: 'progress', label: 'Tiến độ', icon: '📊' },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>

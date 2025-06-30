@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,10 +11,50 @@ import * as SplashScreen from 'expo-splash-screen';
 // Import theme and localization
 import { colors } from '../src/theme';
 import { I18nProvider } from '../src/localization';
-import { store } from '../src/store';
+import { store } from '../src/redux/store';
+import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
+import { LoadingSpinner } from '../src/components/ui/atoms/LoadingSpinner';
 
 // Keep splash screen visible while loading
 SplashScreen.preventAutoHideAsync();
+
+function RootLayoutNav() {
+  const { user, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === 'auth';
+
+    if (!user && !inAuthGroup) {
+      // Redirect to login if not authenticated
+      router.replace('/auth/login');
+    } else if (user && inAuthGroup) {
+      // Redirect to home if authenticated
+      router.replace('/(tabs)');
+    }
+  }, [user, segments, isLoading]);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.neutral[50] }}>
+        <LoadingSpinner />
+      </View>
+    );
+  }
+
+  return (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="auth/login" options={{ headerShown: false }} />
+      <Stack.Screen name="auth/register" options={{ headerShown: false }} />
+      <Stack.Screen name="vocabulary/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="+not-found" />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -43,40 +83,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <Provider store={store}>
           <I18nProvider>
-            <View style={styles.container}>
-              <StatusBar style="dark" backgroundColor={colors.neutral[50]} />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  animation: 'slide_from_right',
-                  animationDuration: 300,
-                }}
-              >
-                <Stack.Screen 
-                  name="(tabs)" 
-                  options={{ 
-                    headerShown: false,
-                    title: 'Học Tiếng Trung' 
-                  }} 
-                />
-                <Stack.Screen 
-                  name="onboarding" 
-                  options={{ 
-                    headerShown: false,
-                    presentation: 'fullScreenModal' 
-                  }} 
-                />
-                <Stack.Screen 
-                  name="lesson/[id]" 
-                  options={{ 
-                    headerShown: true,
-                    title: 'Bài Học',
-                    headerStyle: { backgroundColor: colors.neutral[50] },
-                    headerTintColor: colors.primary[600],
-                  }} 
-                />
-              </Stack>
-            </View>
+            <AuthProvider>
+              <RootLayoutNav />
+            </AuthProvider>
           </I18nProvider>
         </Provider>
       </SafeAreaProvider>

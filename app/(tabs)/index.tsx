@@ -8,6 +8,7 @@ import {
   Modal,
   Alert,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -25,19 +26,70 @@ import { useTranslation } from '../../src/localization';
 import { Card } from '../../src/components/ui/atoms/Card';
 import { ProgressBar } from '../../src/components/ui/molecules/ProgressBar';
 import { Button } from '../../src/components/ui/atoms/Button';
+import { useAuth } from '../../src/contexts/AuthContext';
+import { api } from '../../src/services/api/client';
+import { LoadingSpinner } from '../../src/components/ui/atoms/LoadingSpinner';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { t, practice } = useTranslation();
+  const { user } = useAuth();
 
-  // Silent mode detection state
+  // State
   const [showSilentModeModal, setShowSilentModeModal] = useState(false);
   const [isCheckingSilentMode, setIsCheckingSilentMode] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [userStats, setUserStats] = useState({
+    dailyGoal: 5,
+    completedLessons: 0,
+    streak: 0,
+    xp: 0,
+    wordsLearned: 0,
+    studyTimeToday: 0,
+    accuracy: 0,
+  });
 
   // Check silent mode on app launch
   useEffect(() => {
     checkSilentMode();
+    fetchUserData();
   }, []);
+
+  const fetchUserData = async () => {
+    try {
+      if (user) {
+        // Fetch user progress from API
+        const [statsResponse, progressResponse] = await Promise.all([
+          api.progress.getOverallStats(user.id),
+          api.progress.getWeeklyProgress(user.id),
+        ]);
+
+        if (statsResponse.success && statsResponse.data) {
+          const stats = statsResponse.data;
+          setUserStats({
+            dailyGoal: 5,
+            completedLessons: stats.completedLessons || 0,
+            streak: user.currentStreak || 0,
+            xp: user.totalXp || 0,
+            wordsLearned: stats.wordsLearned || 0,
+            studyTimeToday: stats.studyTimeToday || 0,
+            accuracy: stats.accuracy || 0,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchUserData();
+    setIsRefreshing(false);
+  };
 
   const checkSilentMode = async () => {
     if (Platform.OS !== 'ios') {
@@ -127,17 +179,6 @@ export default function HomeScreen() {
     }
   };
 
-  // Mock user data - in real app this would come from Redux/API
-  const userStats = {
-    dailyGoal: 5,
-    completedLessons: 3,
-    streak: 7,
-    xp: 1580,
-    wordsLearned: 245,
-    studyTimeToday: 25, // minutes
-    accuracy: 87,
-  };
-
   const dailyProgress =
     (userStats.completedLessons / userStats.dailyGoal) * 100;
 
@@ -210,6 +251,17 @@ export default function HomeScreen() {
       color: colors.warning[500],
     },
   ];
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <LoadingSpinner />
+          <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -320,11 +372,21 @@ export default function HomeScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary[500]]}
+            tintColor={colors.primary[500]}
+          />
+        }
       >
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <View style={styles.welcomeContent}>
-            <Text style={styles.welcomeGreeting}>Xin chào! 👋</Text>
+            <Text style={styles.welcomeGreeting}>
+              Xin chào, {user?.fullName || 'bạn'}! 👋
+            </Text>
             <Text style={styles.welcomeTitle}>Sẵn sàng học tiếng Trung?</Text>
             <View style={styles.streakContainer}>
               <Ionicons name="flame" size={20} color={colors.warning[500]} />

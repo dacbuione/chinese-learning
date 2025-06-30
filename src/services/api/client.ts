@@ -111,12 +111,14 @@ export interface Vocabulary {
 class ApiClient {
   private baseURL: string;
   private timeout: number;
+  private maxRetries: number;
   private headers: Record<string, string>;
   private token: string | null = null;
 
   constructor() {
     this.baseURL = API_CONFIG.BASE_URL;
     this.timeout = API_CONFIG.TIMEOUT;
+    this.maxRetries = 3;
     this.headers = { ...API_CONFIG.HEADERS };
   }
 
@@ -132,54 +134,86 @@ class ApiClient {
     delete this.headers['Authorization'];
   }
 
-  // Generic request method
-  private async request<T>(
+  private async makeRequest<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retryCount = 0
   ): Promise<ApiResponse<T>> {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    // Enhanced logging
+    console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+    if (options.body && typeof options.body === 'string') {
+      console.log(`📤 Request Body:`, JSON.parse(options.body));
+    }
+
     try {
-      const url = `${this.baseURL}${endpoint}`;
-      const config: RequestInit = {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+      const response = await fetch(url, {
         ...options,
+        signal: controller.signal,
         headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
           ...this.headers,
           ...options.headers,
         },
-      };
+      });
 
-      // AbortController for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-      config.signal = controller.signal;
-
-      console.log(`🌐 API Request: ${config.method || 'GET'} ${url}`);
-
-      const response = await fetch(url, config);
       clearTimeout(timeoutId);
-      
-      const data = await response.json();
+
+      // Enhanced response logging
+      console.log(`📡 API Response: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
-        throw new Error(data.message || `HTTP ${response.status}`);
+        const errorText = await response.text();
+        console.error(`❌ API Error ${response.status}:`, errorText);
+        
+        // Retry on server errors
+        if (response.status >= 500 && retryCount < this.maxRetries) {
+          console.log(`🔄 Retrying... Attempt ${retryCount + 1}/${this.maxRetries}`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          return this.makeRequest(endpoint, options, retryCount + 1);
+        }
+
+        return {
+          data: null,
+          success: false,
+          message: `HTTP ${response.status}: ${errorText}`,
+        };
       }
 
-      console.log(`✅ API Success: ${url}`, data);
+      const data = await response.json();
+      console.log(`✅ API Success:`, data);
+
       return {
-        success: true,
         data,
+        success: true,
+        message: 'Success',
       };
-    } catch (error) {
-      console.error(`❌ API Error: ${endpoint}`, error);
+    } catch (error: any) {
+      console.error(`💥 API Network Error:`, error);
+
+      // Retry on network errors
+      if (retryCount < this.maxRetries && !error.name?.includes('AbortError')) {
+        console.log(`🔄 Retrying... Attempt ${retryCount + 1}/${this.maxRetries}`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return this.makeRequest(endpoint, options, retryCount + 1);
+      }
+
       return {
+        data: null,
         success: false,
-        error: error instanceof Error ? error.message : 'Network error',
+        message: error.message || 'Network error occurred',
       };
     }
   }
 
   // Auth endpoints
   async login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
-    return this.request<LoginResponse>('/auth/login', {
+    return this.makeRequest<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -192,60 +226,109 @@ class ApiClient {
     level?: string;
     preferredLanguage?: string;
   }): Promise<ApiResponse<LoginResponse>> {
-    return this.request<LoginResponse>('/auth/register', {
+    return this.makeRequest<LoginResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
   }
 
   async getProfile(): Promise<ApiResponse<{ user: any }>> {
-    return this.request('/auth/profile');
+    return this.makeRequest('/auth/profile');
   }
 
   // Lessons endpoints
   async getLessons(difficulty?: string): Promise<ApiResponse<Lesson[]>> {
     const query = difficulty ? `?difficulty=${difficulty}` : '';
-    return this.request<Lesson[]>(`/lessons${query}`);
+    return this.makeRequest<Lesson[]>(`/lessons${query}`);
   }
 
   async getLesson(id: string): Promise<ApiResponse<Lesson>> {
-    return this.request<Lesson>(`/lessons/${id}`);
+    return this.makeRequest<Lesson>(`/lessons/${id}`);
   }
 
   // Vocabulary endpoints
   async getVocabulary(lessonId?: string): Promise<ApiResponse<Vocabulary[]>> {
     const query = lessonId ? `?lessonId=${lessonId}` : '';
-    return this.request<Vocabulary[]>(`/vocabulary${query}`);
+    return this.makeRequest<Vocabulary[]>(`/vocabulary${query}`);
   }
 
   async getVocabularyById(id: string): Promise<ApiResponse<Vocabulary>> {
-    return this.request<Vocabulary>(`/vocabulary/${id}`);
+    return this.makeRequest<Vocabulary>(`/vocabulary/${id}`);
   }
 
   async getWritingPracticeVocabulary(): Promise<ApiResponse<Vocabulary[]>> {
-    return this.request<Vocabulary[]>('/vocabulary/writing-practice');
+    return this.makeRequest<Vocabulary[]>('/vocabulary/writing-practice');
   }
 
   async getPronunciationPracticeVocabulary(difficulty?: string): Promise<ApiResponse<Vocabulary[]>> {
     const query = difficulty ? `?difficulty=${difficulty}` : '';
-    return this.request<Vocabulary[]>(`/vocabulary/pronunciation-practice${query}`);
+    return this.makeRequest<Vocabulary[]>(`/vocabulary/pronunciation-practice${query}`);
   }
 
   // Progress endpoints
   async getWeeklyProgress(userId: string): Promise<ApiResponse<any[]>> {
-    return this.request<any[]>(`/progress/weekly?userId=${userId}`);
+    try {
+      return await this.makeRequest<any[]>(`/progress/weekly?userId=${userId}`);
+    } catch (error) {
+      console.error('Error fetching weekly progress:', error);
+      return {
+        data: [], 
+        success: false, 
+        message: 'Không thể tải tiến độ tuần này'
+      };
+    }
   }
 
   async getSkillsProgress(userId: string): Promise<ApiResponse<any[]>> {
-    return this.request<any[]>(`/progress/skills?userId=${userId}`);
+    try {
+      return await this.makeRequest<any[]>(`/progress/skills?userId=${userId}`);
+    } catch (error) {
+      console.error('Error fetching skills progress:', error);
+      return {
+        data: [], 
+        success: false, 
+        message: 'Không thể tải kỹ năng'
+      };
+    }
   }
 
   async getAchievements(userId: string): Promise<ApiResponse<any[]>> {
-    return this.request<any[]>(`/progress/achievements?userId=${userId}`);
+    try {
+      return await this.makeRequest<any[]>(`/progress/achievements?userId=${userId}`);
+    } catch (error) {
+      console.error('Error fetching achievements:', error);
+      return {
+        data: [], 
+        success: false, 
+        message: 'Không thể tải thành tích'
+      };
+    }
   }
 
   async getOverallStats(userId: string): Promise<ApiResponse<any>> {
-    return this.request<any>(`/progress/stats?userId=${userId}`);
+    try {
+      return await this.makeRequest<any>(`/progress/stats?userId=${userId}`);
+    } catch (error) {
+      console.error('Error fetching overall stats:', error);
+      return {
+        data: null, 
+        success: false, 
+        message: 'Không thể tải thống kê'
+      };
+    }
+  }
+
+  async getUserStats(userId: string): Promise<ApiResponse<any>> {
+    try {
+      return await this.makeRequest<any>(`/users/stats?userId=${userId}`);
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      return {
+        data: null, 
+        success: false, 
+        message: 'Không thể tải thông tin người dùng'
+      };
+    }
   }
 
   // Quiz endpoints
@@ -254,23 +337,23 @@ class ApiClient {
     query.append('lessonId', lessonId);
     if (questionCount) query.append('questionCount', questionCount.toString());
     if (difficulty) query.append('difficulty', difficulty);
-    return this.request<any>(`/quiz/generate?${query.toString()}`);
+    return this.makeRequest<any>(`/quiz/generate?${query.toString()}`);
   }
 
   async getQuizByLesson(lessonId: string): Promise<ApiResponse<any>> {
-    return this.request<any>(`/quiz/lesson?lessonId=${lessonId}`);
+    return this.makeRequest<any>(`/quiz/lesson?lessonId=${lessonId}`);
   }
 
   async getRandomQuiz(difficulty?: string, questionCount?: number): Promise<ApiResponse<any>> {
     const query = new URLSearchParams();
     if (difficulty) query.append('difficulty', difficulty);
     if (questionCount) query.append('questionCount', questionCount.toString());
-    return this.request<any>(`/quiz/random?${query.toString()}`);
+    return this.makeRequest<any>(`/quiz/random?${query.toString()}`);
   }
 
   // Health check
   async healthCheck(): Promise<ApiResponse<{ status: string }>> {
-    return this.request('/health');
+    return this.makeRequest('/health');
   }
 }
 
